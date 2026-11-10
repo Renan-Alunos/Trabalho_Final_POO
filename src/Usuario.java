@@ -6,8 +6,8 @@ public class Usuario {
 
     public Usuario(String nome, String senha, String cpf) {
         this.nome = nome;
-        this.cpf = cpf;
         this.senha = senha;
+        this.cpf = cpf;
     }
 
     public String getNome() {
