@@ -1,11 +1,12 @@
-import java.time.LocalDateTime;
 public class Usuario {
 
     private String nome;
+    private String cpf;
+    private String senha;
 
-    public Usuario(String nome) {
+    public Usuario(String nome, String senha, String cpf) {
         this.nome = nome;
-        this.cpf = cpf;;
+        this.cpf = cpf;
         this.senha = senha;
     }
 
@@ -13,11 +14,15 @@ public class Usuario {
         return nome;
     }
 
-    public int getSenha() {
+    public String getSenha() {
         return senha;
     }
 
     public String getCpf() {
         return cpf;
+    }
+
+    public String getTipoUsuario() {
+        return "Usuario";
     }
 }
