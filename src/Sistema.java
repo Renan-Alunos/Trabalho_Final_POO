@@ -1,116 +1,147 @@
 import java.util.ArrayList;
-/*
-  CADASTRAR CLIENTES, CADASTRAR PRODUTOS,
-  REALIZAR PEDIDOS, GERAR RELATÓRIOS DE VENDAS, VER ESTOQUE
-*/
-public class Sistema{
-    //armazena clientes e funcionários
+import java.util.HashMap;
+import java.util.Map;
+
+public class Sistema {
+
     private ArrayList<Usuario> usuarios = new ArrayList<>();
-
-    //catálogo
+    private ArrayList<Pedido> pedidos = new ArrayList<>();
     private Catalogo catalogo = new Catalogo();
+    private int proximoPedido = 1;
 
-    public Sistema(){
-        //funcionário administrador
-        Funcionario administrador = new Funcionario("Administrador","00000000000","admin123","F01");
-        usuarios.add(administrador);
+    public Sistema() {
+        usuarios.add(new Funcionario("Administrador", "00000000000", "admin123", "F01"));
 
-        //produtos iniciais
-        catalogo.adicionarProduto(new Produto(1, "Dipirona 500mg", 12.50, 5));//(codigo, nome, preço, quantidade)
+        catalogo.adicionarProduto(new Produto(1, "Dipirona 500mg", 12.50, 5));
         catalogo.adicionarProduto(new Produto(2, "Paracetamol 750mg", 9.90, 10));
         catalogo.adicionarProduto(new Produto(3, "Ibuprofeno 400mg", 15.90, 6));
         catalogo.adicionarProduto(new Produto(4, "Vitamina C", 19.90, 5));
-        catalogo.adicionarProduto(new Produto(5, "Soro Fisiológico", 7.50, 10));
+        catalogo.adicionarProduto(new Produto(5, "Soro Fisiologico", 7.50, 10));
     }
-    
-    //login usuário
-    public Usuario fazerLogin(String cpf, String senha){
-        for (Usuario usuario : usuarios){
-            if (usuario.getCpf().equals(cpf) && usuario.getSenha().equals(senha)){
+
+    public Usuario fazerLogin(String cpf, String senha) {
+        for (Usuario usuario : usuarios) {
+            if (usuario.getCpf().equals(cpf) && usuario.conferirSenha(senha)) {
                 return usuario;
-            }
-        }
-        return null; //retorna null se não encontrar o usuário
-    }
-
-    public void cadastrarCliente(String nome, String cpf, String senha){
-        //verifica se o CPF já está cadastrado
-        for (Usuario usuario : usuarios){
-            if (usuario.getCpf().equals(cpf)){
-                System.out.println("CPF já cadastrado!");
-                return;
-            }
-        }
-        //cria um novo cliente
-        Cliente cliente = new Cliente(nome, cpf, senha);
-
-        //add o cliente na lista de usuários
-        usuarios.add(cliente);
-
-        System.out.println("Cliente cadastrado com sucesso!");
-    }
-
-    public String buscarClientes(String cpf){ //buscara usuário a partir de seu cpf
-        for(Usuario usuario : usuarios){
-            if (usuario instanceof Cliente && usuario.getCpf().equals(cpf)){
-                return usuario.getNome();
             }
         }
         return null;
     }
 
-    public ArrayList<Produto> listarProdutos(){
+    public void cadastrarCliente(String nome, String cpf, String senha) {
+        for (Usuario usuario : usuarios) {
+            if (usuario.getCpf().equals(cpf)) {
+                throw new IllegalArgumentException("CPF ja cadastrado.");
+            }
+        }
+
+        usuarios.add(new Cliente(nome, cpf, senha));
+    }
+
+    public ArrayList<Produto> listarProdutos() {
         return catalogo.getProdutos();
     }
 
-    public boolean cadastrarProduto(Funcionario funcionario, int codigo, String nome, double preco, int quantidade){
-        //verifica se o funcionário pertence ao sistema
-        if (funcionario == null || !usuarios.contains(funcionario)){
-            return false;
-        }
-
-        //verifica se os dados são válidos
-        if (codigo <= 0 || nome == null || nome.isBlank() || !Double.isFinite(preco) || preco <= 0 || quantidade < 0){
-            return false;
-        }
-
-        //verifica se o código já existe
-        if (catalogo.buscarProduto(codigo) != null){
-            return false;
-        }
-
-        //cria um produto
-        Produto produto = new Produto(codigo, nome, preco, quantidade);
-
-        //só o funcionário adiciona o produto ao catálogo
-        funcionario.adicionarProduto(catalogo, produto);
-
-        return true;
+    public Produto buscarProduto(int codigo) {
+        return catalogo.buscarProduto(codigo);
     }
 
-    public boolean alterarPreco(Funcionario funcionario, int codigo, double novoPreco) {
-        //verifica se o funcionário está cadastrado
-        if (funcionario == null || !usuarios.contains(funcionario)) {
+    public ArrayList<Pedido> listarPedidos() {
+        return new ArrayList<>(pedidos);
+    }
+
+    private boolean funcionarioValido(Funcionario funcionario) {
+        return funcionario != null && usuarios.contains(funcionario);
+    }
+
+    public boolean cadastrarProduto(Funcionario funcionario, int codigo,
+                                    String nome, double preco, int quantidade) {
+        if (!funcionarioValido(funcionario) || catalogo.buscarProduto(codigo) != null) {
             return false;
         }
 
-        //verifica se o preço é válido
-        if (!Double.isFinite(novoPreco) || novoPreco < 0) {
+        try {
+            funcionario.adicionarProduto(catalogo, new Produto(codigo, nome, preco, quantidade));
+            return true;
+        } catch (IllegalArgumentException erro) {
             return false;
         }
+    }
 
-        //busca produto por código
+    public boolean alterarPreco(Funcionario funcionario, int codigo, double preco) {
         Produto produto = catalogo.buscarProduto(codigo);
 
-        //verifica se o produto existe
-        if (produto == null) {
+        if (!funcionarioValido(funcionario) || produto == null) {
             return false;
         }
 
-        //altera preço
-        funcionario.alterarPreco(produto, novoPreco);
+        try {
+            funcionario.alterarPreco(produto, preco);
+            return true;
+        } catch (IllegalArgumentException erro) {
+            return false;
+        }
+    }
+
+    public boolean reporEstoque(Funcionario funcionario, int codigo, int quantidade) {
+        Produto produto = catalogo.buscarProduto(codigo);
+
+        if (!funcionarioValido(funcionario) || produto == null) {
+            return false;
+        }
+
+        try {
+            funcionario.reporEstoque(produto, quantidade);
+            return true;
+        } catch (IllegalArgumentException erro) {
+            return false;
+        }
+    }
+
+    public Pedido criarPedido(Cliente cliente) {
+        if (cliente == null || !usuarios.contains(cliente)) {
+            throw new IllegalArgumentException("Cliente nao cadastrado.");
+        }
+
+        return new Pedido(proximoPedido++, cliente);
+    }
+
+    public boolean finalizarPedido(Pedido pedido, Pagamento pagamento) {
+        if (pedido == null || pagamento == null || pedido.isFinalizado() ||
+            !usuarios.contains(pedido.getCliente()) || pedido.getItens().isEmpty()) {
+            return false;
+        }
+
+        Map<Produto, Integer> quantidades = new HashMap<>();
+
+        for (ItemPedido item : pedido.getItens()) {
+            Produto produto = item.getProduto();
+
+            if (catalogo.buscarProduto(produto.getCodigo()) != produto) {
+                return false;
+            }
+
+            int total = quantidades.getOrDefault(produto, 0) + item.getQuantidade();
+
+            if (total > produto.getQuantidade()) {
+                return false;
+            }
+
+            quantidades.put(produto, total);
+        }
+
+        if (!pagamento.processarPagamento(pedido.calcularTotal())) {
+            return false;
+        }
+
+        for (Map.Entry<Produto, Integer> entrada : quantidades.entrySet()) {
+            entrada.getKey().retirarEstoque(entrada.getValue());
+        }
+
+        pedido.confirmarPagamento(pagamento.getForma());
+        pedido.getCliente().adicionarPedido(pedido);
+        pedidos.add(pedido);
 
         return true;
     }
-
 }
