@@ -38,4 +38,3 @@ public class Pedido {
         return total;
     }
 }
-

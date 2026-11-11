@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Locale;
 /*
   CADASTRAR CLIENTES, CADASTRAR PRODUTOS,
   REALIZAR PEDIDOS, GERAR RELATÓRIOS DE VENDAS, VER ESTOQUE
@@ -113,4 +114,136 @@ public class Sistema{
         return true;
     }
 
+    public boolean reporEstoque(Funcionario funcionario, int codigo, int quantidade) {
+        Produto produto = catalogo.buscarProduto(codigo);
+        if (!funcionarioValido(funcionario) || produto == null ||
+                quantidade <= 0 || quantidade > Integer.MAX_VALUE - produto.getQuantidade()) {
+            return false;
+        }
+
+        produto.adicionarEstoque(quantidade);
+        return true;
+    }
+
+    public Pedido criarPedido(Cliente cliente) {
+        if (cliente == null || !usuarios.contains(cliente)) {
+            throw new IllegalArgumentException("Cliente nao cadastrado.");
+        }
+
+        Pedido pedido = new Pedido(proximoNumeroPedido, cliente);
+        proximoNumeroPedido++;
+        pedidosAbertos.add(pedido);
+        return pedido;
+    }
+
+    public boolean adicionarItem(Pedido pedido, int codigo, int quantidade) {
+        Produto produto = catalogo.buscarProduto(codigo);
+        if (pedido == null || !pedidosAbertos.contains(pedido) ||
+                produto == null || quantidade <= 0) {
+            return false;
+        }
+
+        long total = quantidade;
+        for (ItemPedido item : pedido.getItens()) {
+            if (item.getProduto() == produto) {
+                total += item.getQuantidade();
+            }
+        }
+
+        if (total > produto.getQuantidade()) {
+            return false;
+        }
+
+        pedido.adicionarItem(new ItemPedido(produto, quantidade));
+        return true;
+    }
+
+    public boolean cancelarPedido(Pedido pedido) {
+        return pedidosAbertos.remove(pedido);
+    }
+
+    public boolean finalizarPedido(Pedido pedido, String formaPagamento) {
+        try {
+            return finalizarPedido(pedido, new Pagamento(formaPagamento));
+        } catch (IllegalArgumentException erro) {
+            return false;
+        }
+    }
+
+    public boolean finalizarPedido(Pedido pedido, Pagamento pagamento) {
+        if (pedido == null || pagamento == null ||
+                !pedidosAbertos.contains(pedido) || pedido.getItens().isEmpty()) {
+            return false;
+        }
+
+        // Confere todo o estoque antes de descontar qualquer produto.
+        for (ItemPedido item : pedido.getItens()) {
+            Produto produto = item.getProduto();
+            if (catalogo.buscarProduto(produto.getCodigo()) != produto) {
+                return false;
+            }
+
+            long totalDoProduto = 0;
+            for (ItemPedido outro : pedido.getItens()) {
+                if (outro.getProduto() == produto) {
+                    totalDoProduto += outro.getQuantidade();
+                }
+            }
+
+            if (totalDoProduto > produto.getQuantidade()) {
+                return false;
+            }
+        }
+
+        if (!pagamento.processarPagamento(pedido.calcularTotal())) {
+            return false;
+        }
+
+        for (ItemPedido item : pedido.getItens()) {
+            item.getProduto().retirarEstoque(item.getQuantidade());
+        }
+
+        pedidosAbertos.remove(pedido);
+        pedidosFinalizados.add(pedido);
+        pedido.getCliente().adicionarPedido(pedido);
+        return true;
+    }
+
+    public ArrayList<Pedido> listarPedidos() {
+        return new ArrayList<>(pedidosFinalizados);
+    }
+
+    public ArrayList<Pedido> listarPedidos(Cliente cliente) {
+        if (cliente == null || !usuarios.contains(cliente)) {
+            return new ArrayList<>();
+        }
+        return cliente.getPedidos();
+    }
+
+    public double calcularTotalVendas() {
+        double total = 0;
+        for (Pedido pedido : pedidosFinalizados) {
+            total += pedido.calcularTotal();
+        }
+        return total;
+    }
+
+    public String gerarRelatorioVendas() {
+        StringBuilder relatorio = new StringBuilder("RELATORIO DE VENDAS\n");
+
+        for (Pedido pedido : pedidosFinalizados) {
+            relatorio.append("Pedido ").append(pedido.getNumero())
+                     .append(" - Cliente: ").append(pedido.getCliente().getNome())
+                     .append(" - Total: R$ ")
+                     .append(String.format(Locale.forLanguageTag("pt-BR"),
+                             "%.2f", pedido.calcularTotal()))
+                     .append("\n");
+        }
+
+        relatorio.append("Pedidos finalizados: ").append(pedidosFinalizados.size());
+        relatorio.append("\nValor vendido: R$ ")
+                 .append(String.format(Locale.forLanguageTag("pt-BR"),
+                         "%.2f", calcularTotalVendas()));
+        return relatorio.toString();
+    }
 }
