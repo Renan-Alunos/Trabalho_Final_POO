@@ -1,24 +1,15 @@
-package farmacia.app;
-
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Scanner;
-import farmacia.servicos.SistemaFarmacia;
-import farmacia.usuarios.Usuario;
-import farmacia.usuarios.Cliente;
-import farmacia.usuarios.Funcionario;
-import farmacia.produtos.Produto;
-import farmacia.pedidos.Pedido;
-import farmacia.pedidos.ItemPedido;
 
 public class Main {
 
     private static Scanner teclado = new Scanner(System.in);
-    private static SistemaFarmacia sistema = new SistemaFarmacia();
+    private static Sistema sistema = new Sistema();
 
-    public static void main(String[] args) {
+    public static void main(String[] args) { //opçoes iniciais
         System.out.println("=== FARMACIA ONLINE ===");
-        System.out.println("Sistema de compras - Sprint 2");
+        System.out.println("Sistema de compras");
         int opcao;
         do {
             System.out.println("\n1 - Fazer login");
@@ -40,7 +31,7 @@ public class Main {
         } while (opcao != 0);
     }
 
-    private static void cadastrarCliente() {
+    private static void cadastrarCliente() {//cadastrar cliente
         String nome = lerTexto("Nome: ");
         String cpf = lerTexto("CPF (11 numeros): ");
         String senha = lerTexto("Senha: ");
@@ -48,7 +39,7 @@ public class Main {
         System.out.println("Cliente cadastrado: " + cliente.getNome());
     }
 
-    private static void fazerLogin() {
+    private static void fazerLogin() {//logar cliente/funcionario
         String cpf = lerTexto("CPF: ");
         String senha = lerTexto("Senha: ");
         Usuario usuario = sistema.fazerLogin(cpf, senha);
@@ -63,7 +54,7 @@ public class Main {
         }
     }
 
-    private static void menuFuncionario(Funcionario funcionario) {
+    private static void menuFuncionario(Funcionario funcionario) {//opçoes que aparecem apenas para o funcionario
         int opcao;
         do {
             System.out.println("\n--- MENU DO FUNCIONARIO ---");
@@ -84,20 +75,20 @@ public class Main {
                         String nome = lerTexto("Nome do produto: ");
                         double preco = lerDecimal("Preco: ");
                         int quantidade = lerInteiro("Estoque inicial: ");
-                        sistema.cadastrarProduto(funcionario, codigo, nome, preco, quantidade);
-                        System.out.println("Produto cadastrado.");
+                        boolean cadastrado = sistema.cadastrarProduto(funcionario, codigo, nome, preco, quantidade);
+                        System.out.println(cadastrado ? "Produto cadastrado." : "Nao foi possivel cadastrar o produto.");
                         break;
                     case 3:
                         int codigoPreco = lerInteiro("Codigo: ");
                         double novoPreco = lerDecimal("Novo preco: ");
-                        sistema.alterarPreco(funcionario, codigoPreco, novoPreco);
-                        System.out.println("Preco alterado.");
+                        boolean alterado = sistema.alterarPreco(funcionario, codigoPreco, novoPreco);
+                        System.out.println(alterado ? "Preco alterado." : "Nao foi possivel alterar o preco.");
                         break;
                     case 4:
                         int codigoEstoque = lerInteiro("Codigo: ");
                         int reposicao = lerInteiro("Quantidade a adicionar: ");
-                        sistema.reporEstoque(funcionario, codigoEstoque, reposicao);
-                        System.out.println("Estoque atualizado.");
+                        boolean reposto = sistema.reporEstoque(funcionario, codigoEstoque, reposicao);
+                        System.out.println(reposto ? "Estoque atualizado." : "Nao foi possivel repor o estoque.");
                         break;
                     case 5:
                         mostrarPedidos(sistema.listarPedidos(funcionario));
@@ -114,7 +105,7 @@ public class Main {
         } while (opcao != 0);
     }
 
-    private static void menuCliente(Cliente cliente) {
+    private static void menuCliente(Cliente cliente) {//opçoes que aparecem para o cliente
         Pedido pedidoAtual = null;
         int opcao;
         do {
@@ -145,8 +136,8 @@ public class Main {
                         mostrarProdutos();
                         int codigo = lerInteiro("Codigo do produto: ");
                         int quantidade = lerInteiro("Quantidade: ");
-                        sistema.adicionarItem(pedidoAtual, codigo, quantidade);
-                        System.out.println("Produto adicionado ao pedido.");
+                        boolean adicionado = sistema.adicionarItem(pedidoAtual, codigo, quantidade);
+                        System.out.println(adicionado ? "Produto adicionado ao pedido." : "Nao foi possivel adicionar o produto.");
                         break;
                     case 4:
                         exigirPedido(pedidoAtual);
@@ -156,10 +147,14 @@ public class Main {
                         exigirPedido(pedidoAtual);
                         mostrarDetalhesPedido(pedidoAtual);
                         String forma = lerTexto("Pagamento (PIX ou CARTAO): ");
-                        sistema.finalizarPedido(pedidoAtual, forma);
-                        System.out.println("Compra confirmada! Pagamento simulado: "
-                                + pedidoAtual.getFormaPagamento());
-                        pedidoAtual = null;
+                        boolean finalizado = sistema.finalizarPedido(pedidoAtual, forma);
+                        if (finalizado) {
+                            System.out.println("Compra confirmada! Pagamento simulado: "
+                                    + pedidoAtual.getFormaPagamento());
+                            pedidoAtual = null;
+                        } else {
+                            System.out.println("Nao foi possivel finalizar o pedido.");
+                        }
                         break;
                     case 6:
                         mostrarPedidos(sistema.listarPedidos(cliente));
@@ -182,7 +177,7 @@ public class Main {
         }
     }
 
-    private static void mostrarProdutos() {
+    private static void mostrarProdutos() {//imprime na tela os produtos
         System.out.println("\n--- CATALOGO ---");
         ArrayList<Produto> produtos = sistema.listarProdutos();
         if (produtos.isEmpty()) {
@@ -203,16 +198,12 @@ public class Main {
     }
 
     private static void mostrarDetalhesPedido(Pedido pedido) {
-        System.out.println("\nPedido numero " + pedido.getNumero()
-                + " | Cliente: " + pedido.getCliente().getNome()
-                + " | Situacao: " + pedido.getSituacao());
+        System.out.println("\nPedido numero " + pedido.getNumero() + " | Cliente: " + pedido.getCliente().getNome() + " | Situacao: " + pedido.getSituacao());
         if (pedido.getItens().isEmpty()) {
             System.out.println("Nenhum item adicionado.");
         }
         for (ItemPedido item : pedido.getItens()) {
-            System.out.println(item.getProduto().getNome() + " - " + item.getQuantidade()
-                    + " x R$ " + dinheiro(item.getPrecoUnitario())
-                    + " = R$ " + dinheiro(item.calcularSubtotal()));
+            System.out.println(item.getProduto().getNome() + " - " + item.getQuantidade() + " x R$ " + dinheiro(item.getPrecoUnitario()) + " = R$ " + dinheiro(item.calcularSubtotal()));
         }
         System.out.println("TOTAL: R$ " + dinheiro(pedido.calcularTotal()));
     }
@@ -249,7 +240,7 @@ public class Main {
                     return valor;
                 }
             } catch (NumberFormatException e) {
-                // Informa a mensagem abaixo e pede o valor novamente.
+                //informa a msg abaixo e pede o valor novamente.
             }
             System.out.println("Digite um valor numerico valido.");
         }
