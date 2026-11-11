@@ -185,15 +185,7 @@ public class Main {
             return;
         }
         for (Produto produto : produtos) {
-            String situacao = "DISPONIVEL";
-            if (produto.getQuantidade() == 0) {
-                situacao = "ESGOTADO";
-            } else if (produto.getQuantidade() <= 5) {
-                situacao = "ESTOQUE BAIXO";
-            }
-            System.out.println("Codigo " + produto.getCodigo() + " | " + produto.getNome()
-                    + " | R$ " + dinheiro(produto.getPreco()) + " | Estoque: "
-                    + produto.getQuantidade() + " | " + situacao);
+           System.out.println("Codigo " + produto.getCodigo() + " | " + produto.getNome() + " | R$ " + dinheiro(produto.getPreco()) + " | Estoque: " + produto.getQuantidade());
         }
     }
 
@@ -231,20 +223,24 @@ public class Main {
     }
 
     private static double lerDecimal(String mensagem) {
-        while (true) {
-            System.out.print(mensagem);
-            String linha = teclado.nextLine().trim().replace(',', '.');
-            try {
-                double valor = Double.parseDouble(linha);
-                if (Double.isFinite(valor)) {
-                    return valor;
-                }
-            } catch (NumberFormatException e) {
-                //informa a msg abaixo e pede o valor novamente.
+    while (true) {
+        System.out.print(mensagem);
+        String linha = teclado.nextLine().trim().replace(',', '.');
+
+        try {
+            double valor = Double.parseDouble(linha);
+
+            if (Double.isFinite(valor)) {
+                return valor;
             }
-            System.out.println("Digite um valor numerico valido.");
+
+        } catch (NumberFormatException e) {
+            // Valor invalido
         }
+
+        System.out.println("Digite um valor numerico valido.");
     }
+}
 
     private static String lerTexto(String mensagem) {
         System.out.print(mensagem);
@@ -254,4 +250,5 @@ public class Main {
     private static String dinheiro(double valor) {
         return String.format(Locale.forLanguageTag("pt-BR"), "%.2f", valor);
     }
+
 }

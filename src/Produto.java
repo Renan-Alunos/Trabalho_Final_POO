@@ -34,6 +34,13 @@ public class Produto {
         }
     }
 
+    public void adicionarEstoque(int quantidade) {
+        if (quantidade <= 0 || quantidade > Integer.MAX_VALUE - this.quantidade) {
+            throw new IllegalArgumentException("Quantidade invalida!");
+        }
+        this.quantidade += quantidade;
+    }
+
     public boolean retirarEstoque(int quantidade) {
         if (quantidade > 0 && quantidade <= this.quantidade) {
             this.quantidade -= quantidade;
