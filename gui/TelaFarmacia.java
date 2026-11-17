@@ -9,6 +9,8 @@ import javax.swing.BorderFactory;//margens do paieel
 import javax.swing.JPasswordField;//senha
 import javax.swing.JButton;//cria botao
 import javax.swing.JOptionPane;//exibe janelas de confirmaçao
+import java.awt.BorderLayout;
+import javax.swing.JScrollPane;
 
 public class TelaFarmacia extends JFrame {
     private JTextField campoCpf = new JTextField();
@@ -53,6 +55,12 @@ public class TelaFarmacia extends JFrame {
         botaoCadastro.setForeground(Color.BLUE);
         botaoCadastro.addActionListener(e -> mostrarTelaCadastro());
         painel.add(botaoCadastro);
+        //botao catalogo
+        JButton botaoCatalogo = new JButton("Ver catálogo");
+        botaoCatalogo.setBackground(Color.WHITE);
+        botaoCatalogo.setForeground(Color.BLUE);
+        botaoCatalogo.addActionListener(e -> mostrarCatalogo());
+        painel.add(botaoCatalogo);
 
         setContentPane(painel);
         revalidate();
@@ -67,8 +75,10 @@ public class TelaFarmacia extends JFrame {
 
         if (usuario == null) {
             JOptionPane.showMessageDialog(this, "CPF ou senha incorretos!");
-        } else {
-            JOptionPane.showMessageDialog(this, "Bem-vindo, " + usuario.getNome() + "!");
+        } else if (usuario instanceof Cliente) {
+            mostrarTelaCliente((Cliente) usuario);
+        } else if (usuario instanceof Funcionario) {
+            mostrarTelaFuncionario((Funcionario) usuario);
         }
     }
 
@@ -128,6 +138,46 @@ public class TelaFarmacia extends JFrame {
         } catch (IllegalArgumentException e) {
             JOptionPane.showMessageDialog(this, e.getMessage());
         }
+    }
+
+    private void mostrarCatalogo() {
+        JPanel painel = new JPanel();
+        painel.setLayout(new BorderLayout(10, 10));
+        painel.setBorder(BorderFactory.createEmptyBorder(40, 80, 40, 80));
+
+        JLabel titulo = new JLabel("Catálogo de produtos", JLabel.CENTER);
+        titulo.setFont(new Font("Times New Roman", Font.BOLD, 30));
+        titulo.setForeground(Color.BLUE);
+
+        painel.add(titulo, BorderLayout.NORTH);
+
+        JPanel listaProdutos = new JPanel();
+        listaProdutos.setLayout(new GridLayout(0, 1, 10, 10));
+
+        for (Produto produto : sistema.listarProdutos()) {
+            JLabel item = new JLabel(produto.getNome() + " - R$ " + String.format("%.2f", produto.getPreco()));
+            listaProdutos.add(item);
+        }
+        painel.add(new JScrollPane(listaProdutos), BorderLayout.CENTER);
+
+        JButton botaoVoltar = new JButton("Voltar");
+        botaoVoltar.setBackground(Color.BLUE);
+        botaoVoltar.setForeground(Color.WHITE);
+        botaoVoltar.addActionListener(e -> mostrarTelaLogin());
+
+        painel.add(botaoVoltar, BorderLayout.SOUTH);
+
+        setContentPane(painel);
+        revalidate();
+        repaint();
+    }
+
+    private void mostrarTelaCliente(Cliente cliente) {
+        JOptionPane.showMessageDialog(this, "Bem-vindo, cliente " + cliente.getNome());
+    }
+    
+    private void mostrarTelaFuncionario(Funcionario funcionario) {
+        JOptionPane.showMessageDialog(this, "Bem-vindo ADM");
     }
     public static void main(String[] args) {
         TelaFarmacia tela = new TelaFarmacia();
