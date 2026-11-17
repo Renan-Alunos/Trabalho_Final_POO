@@ -4,10 +4,10 @@ public class Usuario {
     private String cpf;
     private String senha;
 
-    public Usuario(String nome, String senha, String cpf) {
+    public Usuario(String nome, String cpf, String senha) {
         this.nome = nome;
-        this.senha = senha;
         this.cpf = cpf;
+        this.senha = senha;
     }
 
     public String getNome() {

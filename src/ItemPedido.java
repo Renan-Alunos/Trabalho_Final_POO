@@ -2,6 +2,7 @@ public class ItemPedido {
 
     private Produto produto;
     private int quantidade;
+    private double precoUnitario;
 
     public ItemPedido(Produto produto, int quantidade) {
         if (produto == null || quantidade <= 0) {
@@ -9,6 +10,7 @@ public class ItemPedido {
         }
         this.produto = produto;
         this.quantidade = quantidade;
+        this.precoUnitario = produto.getPreco();
     }
 
     public Produto getProduto() {
@@ -19,7 +21,11 @@ public class ItemPedido {
         return quantidade;
     }
 
+    public double getPrecoUnitario() {
+        return precoUnitario;
+    }
+
     public double calcularSubtotal() {
-        return produto.getPreco() * quantidade;
+        return precoUnitario * quantidade;
     }
 }

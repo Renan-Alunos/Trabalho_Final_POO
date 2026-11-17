@@ -10,6 +10,9 @@ public class Sistema{
 
     //catálogo
     private Catalogo catalogo = new Catalogo();
+    private ArrayList<Pedido> pedidosAbertos = new ArrayList<>();
+    private ArrayList<Pedido> pedidosFinalizados = new ArrayList<>();
+    private int proximoNumeroPedido = 1;
 
     public Sistema(){
         //funcionário administrador
@@ -34,21 +37,18 @@ public class Sistema{
         return null; //retorna null se não encontrar o usuário
     }
 
-    public void cadastrarCliente(String nome, String cpf, String senha){
-        //verifica se o CPF já está cadastrado
-        for (Usuario usuario : usuarios){
-            if (usuario.getCpf().equals(cpf)){
-                System.out.println("CPF já cadastrado!");
-                return;
+    public Cliente cadastrarCliente(String nome, String cpf, String senha) {
+        if (nome == null || nome.isBlank() || cpf == null || !cpf.matches("\\d{11}") || senha == null || senha.isBlank()) {
+            throw new IllegalArgumentException("Dados invalidos!");
+        }
+        for (Usuario usuario : usuarios) {
+            if (usuario.getCpf().equals(cpf)) {
+                throw new IllegalArgumentException("CPF ja cadastrado!");
             }
         }
-        //cria um novo cliente
         Cliente cliente = new Cliente(nome, cpf, senha);
-
-        //add o cliente na lista de usuários
         usuarios.add(cliente);
-
-        System.out.println("Cliente cadastrado com sucesso!");
+        return cliente;
     }
 
     public String buscarClientes(String cpf){ //buscara usuário a partir de seu cpf
@@ -203,6 +203,7 @@ public class Sistema{
             item.getProduto().retirarEstoque(item.getQuantidade());
         }
 
+        pedido.finalizar(pagamento.getForma());
         pedidosAbertos.remove(pedido);
         pedidosFinalizados.add(pedido);
         pedido.getCliente().adicionarPedido(pedido);
@@ -226,6 +227,17 @@ public class Sistema{
             total += pedido.calcularTotal();
         }
         return total;
+    }
+
+    private boolean funcionarioValido(Funcionario funcionario) {
+        return funcionario != null && usuarios.contains(funcionario);
+    }
+
+    public ArrayList<Pedido> listarPedidos(Funcionario funcionario) {
+        if (!funcionarioValido(funcionario)) {
+            return new ArrayList<>();
+        }
+        return listarPedidos();
     }
 
     public String gerarRelatorioVendas() {
