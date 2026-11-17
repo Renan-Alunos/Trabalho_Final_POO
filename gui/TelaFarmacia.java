@@ -84,7 +84,7 @@ public class TelaFarmacia extends JFrame {
 
         JTextField campoNome = new JTextField();
         JTextField campoCpf = new JTextField();
-        JTextField campoSenha = new JTextField();
+        JPasswordField campoSenha = new JPasswordField();
 
         painel.add(titulo);
         painel.add(new JLabel("Cria a sua conta:", JLabel.CENTER));
@@ -102,6 +102,11 @@ public class TelaFarmacia extends JFrame {
         JButton botaoCadastrar = new JButton("Cadastrar");
         botaoCadastrar.setBackground(Color.BLUE);
         botaoCadastrar.setForeground(Color.WHITE);
+        botaoCadastrar.addActionListener(e -> cadastrarCliente(
+        campoNome.getText(),
+        campoCpf.getText(),
+        new String(campoSenha.getPassword())));
+
         painel.add(botaoCadastrar);
         //botao voltar a tela anterior
         JButton botaoVoltar = new JButton("Voltar");
@@ -114,7 +119,16 @@ public class TelaFarmacia extends JFrame {
         revalidate();
         repaint();
     }
-.
+
+    private void cadastrarCliente(String nome, String cpf, String senha){
+        try {
+            sistema.cadastrarCliente(nome, cpf, senha);
+            JOptionPane.showMessageDialog(this, "Cadastro realizado!");
+            mostrarTelaLogin();
+        } catch (IllegalArgumentException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage());
+        }
+    }
     public static void main(String[] args) {
         TelaFarmacia tela = new TelaFarmacia();
         tela.setVisible(true);
