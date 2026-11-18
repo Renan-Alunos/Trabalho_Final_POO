@@ -5,7 +5,7 @@ import java.awt.Color;
 import javax.swing.JPanel;
 import java.awt.GridLayout;
 import javax.swing.JTextField;//campo de texto
-import javax.swing.BorderFactory;//margens do paieel
+import javax.swing.BorderFactory;//margens do painel
 import javax.swing.JPasswordField;//senha
 import javax.swing.JButton;//cria botao
 import javax.swing.JOptionPane;//exibe janelas de confirmaçao
@@ -173,7 +173,13 @@ public class TelaFarmacia extends JFrame {
     }
 
     private void mostrarTelaCliente(Cliente cliente) {
-        JOptionPane.showMessageDialog(this, "Bem-vindo, cliente " + cliente.getNome());
+        setSize(1000, 650);
+        setLocationRelativeTo(null);
+
+        setContentPane(new TelaCliente(sistema, cliente, this::voltarAoLogin));
+
+        revalidate();
+        repaint();
     }
     
     private void mostrarTelaFuncionario(Funcionario funcionario) {
@@ -185,6 +191,10 @@ public class TelaFarmacia extends JFrame {
     public void voltarAoLogin() {
         campoCpf.setText("");
         campoSenha.setText("");
+
+        setSize(600, 500);
+        setLocationRelativeTo(null);
+
         mostrarTelaLogin();
         setVisible(true);
     }
