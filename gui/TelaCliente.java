@@ -6,12 +6,15 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 
-// Tela do cliente. Usa a logica existente no Sistema.java.
+// Aqui fica a tela que o cliente usa depois de entrar na conta.
+// As compras e os pedidos continuam sendo tratados pela classe Sistema.
 public class TelaCliente extends JPanel {
+    // Guardo o sistema e o cliente que fez login.
     private final Sistema sistema;
     private final Cliente clienteAtual;
     private final Runnable onSair;
     private Pedido pedidoAtual;
+    // O carrinho guarda o codigo do produto e a quantidade escolhida.
     private final Map<Integer, Integer> carrinho = new LinkedHashMap<>();
     private JPanel painelProdutos;
     private JTextArea resumoCarrinho;
@@ -19,6 +22,7 @@ public class TelaCliente extends JPanel {
     private JComboBox<String> pagamento;
     private final Color azul = new Color(29, 74, 181);
 
+    // Recebo as informacoes do login e monto a tela do cliente.
     public TelaCliente(Sistema sistema, Cliente clienteAtual, Runnable onSair) {
         super(new BorderLayout());
         this.sistema = sistema;
@@ -27,6 +31,7 @@ public class TelaCliente extends JPanel {
         montarTela();
     }
 
+    // Uso este metodo pra manter o mesmo estilo nos titulos.
     private JLabel titulo(String texto) {
         JLabel label = new JLabel(texto, JLabel.CENTER);
         label.setFont(new Font("Times New Roman", Font.BOLD, 29));
@@ -34,6 +39,7 @@ public class TelaCliente extends JPanel {
         return label;
     }
 
+    // Deixo os botoes principais com a mesma cor.
     private JButton botao(String texto) {
         JButton b = new JButton(texto);
         b.setBackground(azul);
@@ -42,6 +48,7 @@ public class TelaCliente extends JPanel {
         return b;
     }
 
+    // Aqui monto a tela: botoes em cima, produtos no meio e carrinho ao lado.
     private void montarTela() {
         JPanel principal = new JPanel(new BorderLayout(12, 12));
         principal.setBorder(new EmptyBorder(12, 14, 12, 14));
@@ -57,6 +64,7 @@ public class TelaCliente extends JPanel {
         topo.add(acoes, BorderLayout.EAST);
         principal.add(topo, BorderLayout.NORTH);
 
+        // A lista fica com rolagem pra caber todos os medicamentos.
         painelProdutos = new JPanel();
         painelProdutos.setLayout(new BoxLayout(painelProdutos, BoxLayout.Y_AXIS));
         JScrollPane rolagem = new JScrollPane(painelProdutos);
@@ -64,6 +72,7 @@ public class TelaCliente extends JPanel {
         rolagem.getVerticalScrollBar().setUnitIncrement(12);
         principal.add(rolagem, BorderLayout.CENTER);
 
+        // O carrinho fica na lateral, separado da lista de produtos.
         JPanel lateral = new JPanel(new BorderLayout(8, 8));
         lateral.setPreferredSize(new Dimension(245, 0));
         lateral.setBorder(BorderFactory.createTitledBorder("Carrinho de compras"));
@@ -78,6 +87,7 @@ public class TelaCliente extends JPanel {
         resumoCarrinho.setFont(new Font("SansSerif", Font.PLAIN, 13));
         lateral.add(new JScrollPane(resumoCarrinho), BorderLayout.CENTER);
 
+        // No final do carrinho mostro o total e a forma de pagamento.
         JPanel finalizar = new JPanel(new GridLayout(5, 1, 5, 6));
         valorTotal = new JLabel("Total: R$ 0,00", JLabel.CENTER);
         valorTotal.setFont(new Font("SansSerif", Font.BOLD, 17));
@@ -95,12 +105,14 @@ public class TelaCliente extends JPanel {
         add(principal, BorderLayout.CENTER);
     }
 
+    // Refaco a lista quando alguem aperta + ou - para mostrar a quantidade certa.
     private void atualizarTelaCliente() {
         painelProdutos.removeAll();
         for (Produto produto : sistema.listarProdutos()) {
             JPanel linha = new JPanel(new BorderLayout(10, 4));
             linha.setBorder(new EmptyBorder(9, 10, 9, 10));
             linha.setMaximumSize(new Dimension(Integer.MAX_VALUE, 78));
+            // O cliente ve apenas nome e preco. O estoque nao aparece aqui.
             JPanel descricao = new JPanel(new GridLayout(2, 1));
             descricao.add(new JLabel(produto.getNome()));
             descricao.add(new JLabel(dinheiro(produto.getPreco())));
@@ -123,10 +135,12 @@ public class TelaCliente extends JPanel {
         atualizarResumo();
     }
 
+    // Formato os valores em reais para mostrar na tela.
     private String dinheiro(double valor) {
         return String.format(Locale.forLanguageTag("pt-BR"), "R$ %.2f", valor);
     }
 
+    // Somo os produtos escolhidos e atualizo o valor do carrinho.
     private void atualizarResumo() {
         StringBuilder texto = new StringBuilder();
         double total = 0;
@@ -142,10 +156,12 @@ public class TelaCliente extends JPanel {
         valorTotal.setText("Total: " + dinheiro(total));
     }
 
+    // O + adiciona uma unidade e o - retira uma.
     private void alterarQuantidade(Produto produto, int diferenca) {
         int atual = carrinho.getOrDefault(produto.getCodigo(), 0);
         int novo = atual + diferenca;
         if (novo < 0) return;
+        // Mesmo sem mostrar o estoque, nao deixo passar do disponivel.
         if (novo > produto.getQuantidade()) {
             JOptionPane.showMessageDialog(this, "Quantidade indisponivel para compra.");
             return;
@@ -153,7 +169,8 @@ public class TelaCliente extends JPanel {
         if (novo == 0) carrinho.remove(produto.getCodigo());
         else carrinho.put(produto.getCodigo(), novo);
 
-        // O Pedido nao possui metodo para remover itens. Por isso a tela
+        // Como Pedido nao tem um metodo pra tirar itens,
+        // refaco o pedido quando muda alguma quantidade.        // O Pedido nao possui metodo para remover itens. Por isso a tela
         // cancela o pedido aberto e cria outro com as quantidades atualizadas.
         if (pedidoAtual != null) {
             sistema.cancelarPedido(pedidoAtual);
@@ -175,11 +192,13 @@ public class TelaCliente extends JPanel {
         atualizarTelaCliente();
     }
 
+    // Confiro se tem itens e finalizo usando o metodo do Sistema.
     private void finalizarPedido() {
         if (pedidoAtual == null || carrinho.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Adicione produtos ao carrinho primeiro.");
             return;
         }
+        // PIX e cartao sao opcoes de pagamento simulado.
         String forma = pagamento.getSelectedItem().equals("PIX") ? "PIX" : "CARTAO";
         double total = pedidoAtual.calcularTotal();
         int numero = pedidoAtual.getNumero();
@@ -195,6 +214,7 @@ public class TelaCliente extends JPanel {
         }
     }
 
+    // Busco os pedidos desse cliente e mostro os detalhes numa janela.
     private void mostrarHistorico() {
         ArrayList<Pedido> pedidos = sistema.listarPedidos(clienteAtual);
         if (pedidos.isEmpty()) {
@@ -216,6 +236,7 @@ public class TelaCliente extends JPanel {
         JOptionPane.showMessageDialog(this, new JScrollPane(area), "Historico de compras", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    // Ao sair, limpo o carrinho e volto para a tela de login.
     private void sairDaConta() {
         if (pedidoAtual != null) sistema.cancelarPedido(pedidoAtual);
         pedidoAtual = null;
