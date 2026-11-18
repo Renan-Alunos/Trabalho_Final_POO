@@ -1,6 +1,5 @@
-# 💊 FARMA AURA — Farmácia Online
 
-## 📖 Sobre o projeto
+## Sobre o projeto
 
 A Farma Aura é um sistema de farmácia online desenvolvido em Java como projeto acadêmico da disciplina de Programação Orientada a Objetos (POO).
 
@@ -10,7 +9,7 @@ O projeto possui duas formas de interação: um menu pelo terminal e uma interfa
 
 ---
 
-## 📋 Funcionalidades
+## Funcionalidades
 
 ### Visitante
 - Consultar catálogo de produtos.
@@ -34,7 +33,7 @@ O projeto possui duas formas de interação: um menu pelo terminal e uma interfa
 
 ---
 
-## 💻 Tecnologias utilizadas
+## Tecnologias utilizadas
 
 - Java
 - Java Swing
@@ -44,7 +43,7 @@ O projeto possui duas formas de interação: um menu pelo terminal e uma interfa
 
 ---
 
-## 🧩 Conceitos de POO aplicados
+## Conceitos de POO aplicados
 
 - Abstração
 - Encapsulamento
@@ -58,7 +57,7 @@ O projeto possui duas formas de interação: um menu pelo terminal e uma interfa
 
 ---
 
-## 🚀 Como executar o projeto
+## Como executar o projeto
 
 ### Windows
 
@@ -86,15 +85,3 @@ Executar a interface gráfica:
 
 ---
 
-## 👨‍💻 Etapas de desenvolvimento
-
-- [x] Sprint 1 — Planejamento e modelagem UML
-- [x] Sprint 2 — Implementação da lógica de negócio
-- [x] Sprint 3 — Desenvolvimento da interface gráfica
-- [ ] Sprint 4 — Refatoração e melhorias no sistema
-
----
-
-## 🎓 Finalidade acadêmica
-
-Projeto desenvolvido para aplicação prática dos conceitos de Programação Orientada a Objetos, desenvolvimento de interfaces gráficas e versionamento colaborativo de código.
