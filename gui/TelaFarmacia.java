@@ -177,7 +177,16 @@ public class TelaFarmacia extends JFrame {
     }
     
     private void mostrarTelaFuncionario(Funcionario funcionario) {
-        JOptionPane.showMessageDialog(this, "Bem-vindo ADM");
+        setVisible(false);
+        new TelaFuncionario(sistema, funcionario, this).setVisible(true);
+    }
+
+    //retorna para a tela de login
+    public void voltarAoLogin() {
+        campoCpf.setText("");
+        campoSenha.setText("");
+        mostrarTelaLogin();
+        setVisible(true);
     }
     public static void main(String[] args) {
         TelaFarmacia tela = new TelaFarmacia();
