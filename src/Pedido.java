@@ -5,6 +5,8 @@ public class Pedido {
     private int numero;
     private Cliente cliente;
     private ArrayList<ItemPedido> itens;
+    private String situacao = "ABERTO";
+    private String formaPagamento;
 
     public Pedido(int numero, Cliente cliente) {
         this.numero = numero;
@@ -28,6 +30,22 @@ public class Pedido {
         return new ArrayList<>(itens);
     }
 
+    public String getSituacao() {
+        return situacao;
+    }
+
+    public String getFormaPagamento() {
+        return formaPagamento;
+    }
+
+    public void finalizar(String formaPagamento) {
+        if (!"ABERTO".equals(situacao)) {
+            throw new IllegalStateException("Pedido nao esta aberto!");
+        }
+        this.formaPagamento = formaPagamento;
+        this.situacao = "FINALIZADO";
+    }
+
     public double calcularTotal() {
         double total = 0;
 
@@ -38,4 +56,3 @@ public class Pedido {
         return total;
     }
 }
-
