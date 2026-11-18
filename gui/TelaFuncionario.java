@@ -1,5 +1,5 @@
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
+import javax.swing.JButton;//Cria botão;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -8,19 +8,15 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
-import javax.swing.JTextField;
+import javax.swing.JTextField;//Campo de texto;
 import javax.swing.table.DefaultTableModel;
-import java.awt.BorderLayout;
+import java.awt.BorderLayout;//Margens do painel;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.util.ArrayList;
 import java.util.Locale;
 
-/*
-  Menu do funcionario (versao grafica do menuFuncionario do Main).
-  Esta tela NAO tem regras de negocio: ela so chama os metodos do Sistema.
-*/
 public class TelaFuncionario extends JFrame {
 
     private final Sistema sistema;
@@ -29,7 +25,7 @@ public class TelaFuncionario extends JFrame {
 
     private final JTabbedPane abas = new JTabbedPane();
 
-    // aba 1: produtos e estoque
+    //Primeira Aba - Mostra produtos e o estoque;
     private final DefaultTableModel modeloProdutos = new DefaultTableModel(
             new String[]{"Codigo", "Produto", "Preco", "Estoque"}, 0) {
         @Override
@@ -38,21 +34,21 @@ public class TelaFuncionario extends JFrame {
         }
     };
 
-    // aba 2: cadastrar produto
+    //Segunda Aba - Cadastra o produto;
     private final JTextField campoCadCodigo = new JTextField();
     private final JTextField campoCadNome = new JTextField();
     private final JTextField campoCadPreco = new JTextField();
     private final JTextField campoCadEstoque = new JTextField();
 
-    // aba 3: alterar preco
+    //Terceira Aba - Serve para modificar os valores dos produtos;
     private final JTextField campoPrecoCodigo = new JTextField();
     private final JTextField campoPrecoNovo = new JTextField();
 
-    // aba 4: repor estoque
+    //Quarta Aba - Repoe o estoque dos produtos;
     private final JTextField campoEstoqueCodigo = new JTextField();
     private final JTextField campoEstoqueQtd = new JTextField();
 
-    // aba 5 e 6: pedidos e relatorio
+    //Quinta Aba e a Setxa, mostram os pedidos e as vendas;
     private final JTextArea areaPedidos = new JTextArea();
     private final JTextArea areaRelatorio = new JTextArea();
 
@@ -70,6 +66,7 @@ public class TelaFuncionario extends JFrame {
         add(criarTopo(), BorderLayout.NORTH);
         add(abas, BorderLayout.CENTER);
         add(criarRodape(), BorderLayout.SOUTH);
+        //Layout do aplicativo e das Abas;
 
         abas.addTab("Produtos e estoque", criarAbaProdutos());
         abas.addTab("Cadastrar produto", criarFormulario("Cadastrar produto",
@@ -87,13 +84,12 @@ public class TelaFuncionario extends JFrame {
         abas.addTab("Pedidos", criarAbaTexto(areaPedidos));
         abas.addTab("Relatorio de vendas", criarAbaTexto(areaRelatorio));
 
-        // sempre que trocar de aba, os dados sao recarregados do Sistema
         abas.addChangeListener(e -> atualizarTudo());
         atualizarTudo();
+        //Faz uma atualização a cada mudança de Aba;
     }
 
-    // ---------- montagem da tela ----------
-
+    //TELA;
     private JPanel criarTopo() {
         JPanel topo = new JPanel(new BorderLayout());
         topo.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
@@ -130,10 +126,6 @@ public class TelaFuncionario extends JFrame {
         JTable tabela = new JTable(modeloProdutos);
         tabela.setRowHeight(24);
         painel.add(new JScrollPane(tabela), BorderLayout.CENTER);
-
-        JButton botaoAtualizar = botaoAzul("Atualizar");
-        botaoAtualizar.addActionListener(e -> atualizarTudo());
-        painel.add(botaoAtualizar, BorderLayout.SOUTH);
         return painel;
     }
 
@@ -166,7 +158,6 @@ public class TelaFuncionario extends JFrame {
         botao.addActionListener(e -> acao.run());
         form.add(botao);
 
-        // wrapper para o formulario ficar no topo, sem esticar
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.add(form, BorderLayout.NORTH);
         return wrapper;
@@ -179,8 +170,7 @@ public class TelaFuncionario extends JFrame {
         return botao;
     }
 
-    // ---------- acoes (chamam o Sistema) ----------
-
+    //Funções do Sistema;
     private void cadastrarProduto() {
         try {
             int codigo = Integer.parseInt(campoCadCodigo.getText().trim());
@@ -247,8 +237,7 @@ public class TelaFuncionario extends JFrame {
         telaLogin.voltarAoLogin();
     }
 
-    // ---------- atualizacao dos dados exibidos ----------
-
+    //Atulização dos Dados;
     private void atualizarTudo() {
         atualizarProdutos();
         atualizarPedidos();
@@ -296,9 +285,7 @@ public class TelaFuncionario extends JFrame {
         areaPedidos.setCaretPosition(0);
     }
 
-    // ---------- utilitarios ----------
-
-    // aceita virgula ou ponto como separador decimal (igual ao Main)
+    //Faz vírgula ou ponto funcionar para os números;
     private double lerDecimal(String texto) {
         return Double.parseDouble(texto.trim().replace(',', '.'));
     }
