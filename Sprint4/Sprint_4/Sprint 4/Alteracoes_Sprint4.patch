@@ -1,0 +1,1067 @@
+--- /dev/null
++++ Sprint 4/src/CriadorCartao.java
+@@ -0,0 +1,6 @@
++public class CriadorCartao extends CriadorPagamento {
++    @Override
++    public ProcessadorPagamento criar() {
++        return new PagamentoCartao();
++    }
++}
+--- /dev/null
++++ Sprint 4/src/CriadorPagamento.java
+@@ -0,0 +1,3 @@
++public abstract class CriadorPagamento {
++    public abstract ProcessadorPagamento criar();
++}
+--- /dev/null
++++ Sprint 4/src/CriadorPix.java
+@@ -0,0 +1,6 @@
++public class CriadorPix extends CriadorPagamento {
++    @Override
++    public ProcessadorPagamento criar() {
++        return new PagamentoPix();
++    }
++}
+--- /dev/null
++++ Sprint 4/src/EstoqueInsuficienteException.java
+@@ -0,0 +1,5 @@
++public class EstoqueInsuficienteException extends IllegalStateException {
++    public EstoqueInsuficienteException(String nomeProduto, int disponivel) {
++        super("Estoque insuficiente de " + nomeProduto + ". Disponivel: " + disponivel + ".");
++    }
++}
+--- original/src/Main.java
++++ Sprint 4/src/Main.java
+@@ -7,7 +7,7 @@
+     private static Scanner teclado = new Scanner(System.in);
+     private static Sistema sistema = new Sistema();
+ 
+-    public static void main(String[] args) { //opçoes iniciais
++    public static void main(String[] args) { // Menu inicial pelo terminal.
+         System.out.println("=== FARMACIA ONLINE ===");
+         System.out.println("Sistema de compras");
+         int opcao;
+@@ -25,13 +25,15 @@
+                     case 0: System.out.println("Programa encerrado."); break;
+                     default: System.out.println("Opcao invalida.");
+                 }
++            } catch (EstoqueInsuficienteException e) {
++                System.out.println("Aviso: " + e.getMessage());
+             } catch (IllegalArgumentException | IllegalStateException e) {
+                 System.out.println("Aviso: " + e.getMessage());
+             }
+         } while (opcao != 0);
+     }
+ 
+-    private static void cadastrarCliente() {//cadastrar cliente
++    private static void cadastrarCliente() { // Cadastro pelo terminal.
+         String nome = lerTexto("Nome: ");
+         String cpf = lerTexto("CPF (11 numeros): ");
+         String senha = lerTexto("Senha: ");
+@@ -39,7 +41,7 @@
+         System.out.println("Cliente cadastrado: " + cliente.getNome());
+     }
+ 
+-    private static void fazerLogin() {//logar cliente/funcionario
++    private static void fazerLogin() { // Entra como cliente ou funcionário.
+         String cpf = lerTexto("CPF: ");
+         String senha = lerTexto("Senha: ");
+         Usuario usuario = sistema.fazerLogin(cpf, senha);
+@@ -54,7 +56,7 @@
+         }
+     }
+ 
+-    private static void menuFuncionario(Funcionario funcionario) {//opçoes que aparecem apenas para o funcionario
++    private static void menuFuncionario(Funcionario funcionario) { // Opções do funcionário.
+         int opcao;
+         do {
+             System.out.println("\n--- MENU DO FUNCIONARIO ---");
+@@ -99,13 +101,15 @@
+                     default:
+                         System.out.println("Opcao invalida.");
+                 }
++            } catch (EstoqueInsuficienteException e) {
++                System.out.println("Aviso: " + e.getMessage());
+             } catch (IllegalArgumentException | IllegalStateException e) {
+                 System.out.println("Aviso: " + e.getMessage());
+             }
+         } while (opcao != 0);
+     }
+ 
+-    private static void menuCliente(Cliente cliente) {//opçoes que aparecem para o cliente
++    private static void menuCliente(Cliente cliente) { // Opções do cliente.
+         Pedido pedidoAtual = null;
+         int opcao;
+         do {
+@@ -165,6 +169,8 @@
+                     default:
+                         System.out.println("Opcao invalida.");
+                 }
++            } catch (EstoqueInsuficienteException e) {
++                System.out.println("Aviso: " + e.getMessage());
+             } catch (IllegalArgumentException | IllegalStateException e) {
+                 System.out.println("Aviso: " + e.getMessage());
+             }
+@@ -177,7 +183,7 @@
+         }
+     }
+ 
+-    private static void mostrarProdutos() {//imprime na tela os produtos
++    private static void mostrarProdutos() { // Lista os produtos no terminal.
+         System.out.println("\n--- CATALOGO ---");
+         ArrayList<Produto> produtos = sistema.listarProdutos();
+         if (produtos.isEmpty()) {
+@@ -235,7 +241,7 @@
+             }
+ 
+         } catch (NumberFormatException e) {
+-            // Valor invalido
++            // Se a conversão falhar, pede outro valor em vez de encerrar.
+         }
+ 
+         System.out.println("Digite um valor numerico valido.");
+--- /dev/null
++++ Sprint 4/src/ObservadorSistema.java
+@@ -0,0 +1,3 @@
++public interface ObservadorSistema {
++    void sistemaAtualizado();
++}
+--- original/src/Pagamento.java
++++ Sprint 4/src/Pagamento.java
+@@ -1,26 +1,34 @@
+ import java.util.Locale;
+ 
+ public class Pagamento {
+-
+-    private String forma;
++    private final ProcessadorPagamento processador;
+ 
+     public Pagamento(String forma) {
+         if (forma == null) {
+             throw new IllegalArgumentException("Escolha uma forma de pagamento.");
+         }
++
++        CriadorPagamento criador;
+         String escolhida = forma.trim().toUpperCase(Locale.ROOT);
+-        if (!escolhida.equals("PIX") && !escolhida.equals("CARTAO")) {
+-            throw new IllegalArgumentException("Forma invalida. Escolha PIX ou CARTAO.");
++        switch (escolhida) {
++            case "PIX":
++                criador = new CriadorPix();
++                break;
++            case "CARTAO":
++                criador = new CriadorCartao();
++                break;
++            default:
++                throw new IllegalArgumentException("Forma invalida. Escolha PIX ou CARTAO.");
+         }
+-        this.forma = escolhida;
++        this.processador = criador.criar();
+     }
+ 
+     public String getForma() {
+-        return forma;
++        return processador.getForma();
+     }
+ 
+-    // Nesta sprint, o pagamento e apenas uma simulacao.
++    // Aqui só simulamos o pagamento; não existe cobrança de verdade.
+     public boolean processarPagamento(double valor) {
+-        return Double.isFinite(valor) && valor > 0;
++        return processador.processar(valor);
+     }
+-}+}
+--- /dev/null
++++ Sprint 4/src/PagamentoCartao.java
+@@ -0,0 +1,11 @@
++public class PagamentoCartao implements ProcessadorPagamento {
++    @Override
++    public String getForma() {
++        return "CARTAO";
++    }
++
++    @Override
++    public boolean processar(double valor) {
++        return Double.isFinite(valor) && valor > 0;
++    }
++}
+--- /dev/null
++++ Sprint 4/src/PagamentoPix.java
+@@ -0,0 +1,11 @@
++public class PagamentoPix implements ProcessadorPagamento {
++    @Override
++    public String getForma() {
++        return "PIX";
++    }
++
++    @Override
++    public boolean processar(double valor) {
++        return Double.isFinite(valor) && valor > 0;
++    }
++}
+--- original/src/Pedido.java
++++ Sprint 4/src/Pedido.java
+@@ -24,6 +24,30 @@
+ 
+     public void adicionarItem(ItemPedido item) {
+         itens.add(item);
++    }
++
++    // Assim dá para mudar a quantidade sem criar outro pedido toda vez.
++    public void definirQuantidade(Produto produto, int quantidade) {
++        if (!"ABERTO".equals(situacao)) {
++            throw new IllegalStateException("Pedido nao esta aberto!");
++        }
++        if (produto == null || quantidade < 0) {
++            throw new IllegalArgumentException("Produto ou quantidade invalida.");
++        }
++        itens.removeIf(item -> item.getProduto() == produto);
++        if (quantidade > 0) {
++            itens.add(new ItemPedido(produto, quantidade));
++        }
++    }
++
++    public long quantidadeDoProduto(Produto produto) {
++        long quantidadeTotal = 0;
++        for (ItemPedido item : itens) {
++            if (item.getProduto() == produto) {
++                quantidadeTotal += item.getQuantidade();
++            }
++        }
++        return quantidadeTotal;
+     }
+ 
+     public ArrayList<ItemPedido> getItens() {
+--- /dev/null
++++ Sprint 4/src/ProcessadorPagamento.java
+@@ -0,0 +1,4 @@
++public interface ProcessadorPagamento {
++    String getForma();
++    boolean processar(double valor);
++}
+--- original/src/Produto.java
++++ Sprint 4/src/Produto.java
+@@ -29,9 +29,10 @@
+     }
+ 
+     public void alterarPreco(double novoPreco) {
+-        if (novoPreco >= 0) {
+-            preco = novoPreco;
++        if (!Double.isFinite(novoPreco) || novoPreco < 0) {
++            throw new IllegalArgumentException("Preco invalido.");
+         }
++        preco = novoPreco;
+     }
+ 
+     public void adicionarEstoque(int quantidade) {
+--- original/src/Sistema.java
++++ Sprint 4/src/Sistema.java
+@@ -1,40 +1,57 @@
+ import java.util.ArrayList;
+ import java.util.Locale;
+ /*
+-  CADASTRAR CLIENTES, CADASTRAR PRODUTOS,
+-  REALIZAR PEDIDOS, GERAR RELATÓRIOS DE VENDAS, VER ESTOQUE
+-*/
++ * A classe Sistema reúne os cadastros, as compras e o controle do estoque.
++ * As telas usam esses métodos, sem repetir as regras de negócio.
++ */
+ public class Sistema{
+-    //armazena clientes e funcionários
++    // Clientes e funcionários usam a mesma lista de usuários.
+     private ArrayList<Usuario> usuarios = new ArrayList<>();
+ 
+-    //catálogo
++    // Produtos disponíveis na farmácia.
+     private Catalogo catalogo = new Catalogo();
+     private ArrayList<Pedido> pedidosAbertos = new ArrayList<>();
+     private ArrayList<Pedido> pedidosFinalizados = new ArrayList<>();
+     private int proximoNumeroPedido = 1;
++    private final ArrayList<ObservadorSistema> observadores = new ArrayList<>();
++
++    public void adicionarObservador(ObservadorSistema observador) {
++        if (observador != null && !observadores.contains(observador)) {
++            observadores.add(observador);
++        }
++    }
++
++    public void removerObservador(ObservadorSistema observador) {
++        observadores.remove(observador);
++    }
++
++    private void avisarObservadores() {
++        for (ObservadorSistema observador : new ArrayList<>(observadores)) {
++            observador.sistemaAtualizado();
++        }
++    }
+ 
+     public Sistema(){
+-        //funcionário administrador
++        // Conta inicial para entrar como funcionário.
+         Funcionario administrador = new Funcionario("Administrador","00000000000","admin123","F01");
+         usuarios.add(administrador);
+ 
+-        //produtos iniciais
+-        catalogo.adicionarProduto(new Produto(1, "Dipirona 500mg", 12.50, 5));//(codigo, nome, preço, quantidade)
++        // Alguns produtos já aparecem quando o programa abre.
++        catalogo.adicionarProduto(new Produto(1, "Dipirona 500mg", 12.50, 5));// (código, nome, preço, quantidade)
+         catalogo.adicionarProduto(new Produto(2, "Paracetamol 750mg", 9.90, 10));
+         catalogo.adicionarProduto(new Produto(3, "Ibuprofeno 400mg", 15.90, 6));
+         catalogo.adicionarProduto(new Produto(4, "Vitamina C", 19.90, 5));
+         catalogo.adicionarProduto(new Produto(5, "Soro Fisiológico", 7.50, 10));
+     }
+     
+-    //login usuário
++    // Procura o CPF e confere a senha.
+     public Usuario fazerLogin(String cpf, String senha){
+         for (Usuario usuario : usuarios){
+             if (usuario.getCpf().equals(cpf) && usuario.getSenha().equals(senha)){
+                 return usuario;
+             }
+         }
+-        return null; //retorna null se não encontrar o usuário
++        return null; // Não encontrou um usuário com esses dados.
+     }
+ 
+     public Cliente cadastrarCliente(String nome, String cpf, String senha) {
+@@ -51,7 +68,7 @@
+         return cliente;
+     }
+ 
+-    public String buscarClientes(String cpf){ //buscara usuário a partir de seu cpf
++    public String buscarClientes(String cpf){ // Busca o nome do cliente pelo CPF.
+         for(Usuario usuario : usuarios){
+             if (usuario instanceof Cliente && usuario.getCpf().equals(cpf)){
+                 return usuario.getNome();
+@@ -65,52 +82,52 @@
+     }
+ 
+     public boolean cadastrarProduto(Funcionario funcionario, int codigo, String nome, double preco, int quantidade){
+-        //verifica se o funcionário pertence ao sistema
++        // Só um funcionário cadastrado pode alterar produtos.
+         if (funcionario == null || !usuarios.contains(funcionario)){
+             return false;
+         }
+ 
+-        //verifica se os dados são válidos
++        // Confere os dados antes de criar o produto.
+         if (codigo <= 0 || nome == null || nome.isBlank() || !Double.isFinite(preco) || preco <= 0 || quantidade < 0){
+             return false;
+         }
+ 
+-        //verifica se o código já existe
++        // Não permite dois produtos com o mesmo código.
+         if (catalogo.buscarProduto(codigo) != null){
+             return false;
+         }
+ 
+-        //cria um produto
++        // Cria o produto com os dados preenchidos.
+         Produto produto = new Produto(codigo, nome, preco, quantidade);
+ 
+-        //só o funcionário adiciona o produto ao catálogo
++        // O funcionário faz a inclusão no catálogo.
+         funcionario.adicionarProduto(catalogo, produto);
+-
++        avisarObservadores();
+         return true;
+     }
+ 
+     public boolean alterarPreco(Funcionario funcionario, int codigo, double novoPreco) {
+-        //verifica se o funcionário está cadastrado
++        // Confere se quem pediu a mudança é funcionário.
+         if (funcionario == null || !usuarios.contains(funcionario)) {
+             return false;
+         }
+ 
+-        //verifica se o preço é válido
++        // Preço inválido não pode ser salvo.
+         if (!Double.isFinite(novoPreco) || novoPreco < 0) {
+             return false;
+         }
+ 
+-        //busca produto por código
+-        Produto produto = catalogo.buscarProduto(codigo);
+-
+-        //verifica se o produto existe
++        // Localiza o produto pelo código.
++        Produto produto = catalogo.buscarProduto(codigo);
++
++        // Se não encontrar o produto, não altera nada.
+         if (produto == null) {
+             return false;
+         }
+ 
+-        //altera preço
++        // Atualiza o valor e avisa as telas.
+         funcionario.alterarPreco(produto, novoPreco);
+-
++        avisarObservadores();
+         return true;
+     }
+ 
+@@ -122,6 +139,7 @@
+         }
+ 
+         produto.adicionarEstoque(quantidade);
++        avisarObservadores();
+         return true;
+     }
+ 
+@@ -143,18 +161,26 @@
+             return false;
+         }
+ 
+-        long total = quantidade;
+-        for (ItemPedido item : pedido.getItens()) {
+-            if (item.getProduto() == produto) {
+-                total += item.getQuantidade();
+-            }
+-        }
+-
++        long total = pedido.quantidadeDoProduto(produto) + quantidade;
+         if (total > produto.getQuantidade()) {
+-            return false;
++            throw new EstoqueInsuficienteException(produto.getNome(), produto.getQuantidade());
+         }
+ 
+         pedido.adicionarItem(new ItemPedido(produto, quantidade));
++        return true;
++    }
++
++    // O carrinho muda a quantidade sem precisar cancelar o pedido.
++    public boolean definirQuantidadeItem(Pedido pedido, int codigo, int quantidade) {
++        Produto produto = catalogo.buscarProduto(codigo);
++        if (pedido == null || !pedidosAbertos.contains(pedido) ||
++                produto == null || quantidade < 0) {
++            return false;
++        }
++        if (quantidade > produto.getQuantidade()) {
++            throw new EstoqueInsuficienteException(produto.getNome(), produto.getQuantidade());
++        }
++        pedido.definirQuantidade(produto, quantidade);
+         return true;
+     }
+ 
+@@ -176,22 +202,15 @@
+             return false;
+         }
+ 
+-        // Confere todo o estoque antes de descontar qualquer produto.
++        // Confere todos os itens primeiro, para não baixar só parte do estoque.
+         for (ItemPedido item : pedido.getItens()) {
+             Produto produto = item.getProduto();
+             if (catalogo.buscarProduto(produto.getCodigo()) != produto) {
+                 return false;
+             }
+ 
+-            long totalDoProduto = 0;
+-            for (ItemPedido outro : pedido.getItens()) {
+-                if (outro.getProduto() == produto) {
+-                    totalDoProduto += outro.getQuantidade();
+-                }
+-            }
+-
+-            if (totalDoProduto > produto.getQuantidade()) {
+-                return false;
++            if (pedido.quantidadeDoProduto(produto) > produto.getQuantidade()) {
++                throw new EstoqueInsuficienteException(produto.getNome(), produto.getQuantidade());
+             }
+         }
+ 
+@@ -207,6 +226,7 @@
+         pedidosAbertos.remove(pedido);
+         pedidosFinalizados.add(pedido);
+         pedido.getCliente().adicionarPedido(pedido);
++        avisarObservadores();
+         return true;
+     }
+ 
+--- original/Gui/TelaCliente.java
++++ Sprint 4/Gui/TelaCliente.java
+@@ -6,7 +6,7 @@
+ import java.util.Locale;
+ import java.util.Map;
+ 
+-// Tela do cliente. Usa a logica existente no Sistema.java.
++// Mostra os produtos e o carrinho, mas deixa as regras de compra no Sistema.
+ public class TelaCliente extends JPanel {
+     private final Sistema sistema;
+     private final Cliente clienteAtual;
+@@ -18,6 +18,8 @@
+     private JLabel valorTotal;
+     private JComboBox<String> pagamento;
+     private final Color azul = new Color(29, 74, 181);
++    private final ObservadorSistema observador = () ->
++            SwingUtilities.invokeLater(this::atualizarTelaCliente);
+ 
+     public TelaCliente(Sistema sistema, Cliente clienteAtual, Runnable onSair) {
+         super(new BorderLayout());
+@@ -25,6 +27,8 @@
+         this.clienteAtual = clienteAtual;
+         this.onSair = onSair;
+         montarTela();
++        // Atualiza a tela quando o estoque ou os pedidos mudam.
++        sistema.adicionarObservador(observador);
+     }
+ 
+     private JLabel titulo(String texto) {
+@@ -129,48 +133,42 @@
+ 
+     private void atualizarResumo() {
+         StringBuilder texto = new StringBuilder();
+-        double total = 0;
+-        for (Produto p : sistema.listarProdutos()) {
+-            int qtd = carrinho.getOrDefault(p.getCodigo(), 0);
+-            if (qtd > 0) {
+-                texto.append(qtd).append(" x ").append(p.getNome()).append("\n");
+-                texto.append("    ").append(dinheiro(qtd * p.getPreco())).append("\n\n");
+-                total += qtd * p.getPreco();
++        // Pego o total do pedido para não mostrar um valor diferente no carrinho.
++        if (pedidoAtual != null) {
++            for (ItemPedido item : pedidoAtual.getItens()) {
++                texto.append(item.getQuantidade()).append(" x ")
++                     .append(item.getProduto().getNome()).append("\n");
++                texto.append("    ").append(dinheiro(item.calcularSubtotal()))
++                     .append("\n\n");
+             }
+         }
+         resumoCarrinho.setText(texto.length() == 0 ? "Carrinho vazio." : texto.toString());
+-        valorTotal.setText("Total: " + dinheiro(total));
++        valorTotal.setText("Total: " + dinheiro(pedidoAtual == null ? 0 : pedidoAtual.calcularTotal()));
+     }
+ 
+     private void alterarQuantidade(Produto produto, int diferenca) {
+         int atual = carrinho.getOrDefault(produto.getCodigo(), 0);
+         int novo = atual + diferenca;
+         if (novo < 0) return;
+-        if (novo > produto.getQuantidade()) {
+-            JOptionPane.showMessageDialog(this, "Quantidade indisponivel para compra.");
+-            return;
+-        }
+-        if (novo == 0) carrinho.remove(produto.getCodigo());
+-        else carrinho.put(produto.getCodigo(), novo);
+-
+-        // O Pedido nao possui metodo para remover itens. Por isso a tela
+-        // cancela o pedido aberto e cria outro com as quantidades atualizadas.
+-        if (pedidoAtual != null) {
+-            sistema.cancelarPedido(pedidoAtual);
+-            pedidoAtual = null;
+-        }
+-        if (!carrinho.isEmpty()) {
+-            pedidoAtual = sistema.criarPedido(clienteAtual);
+-            for (Produto p : sistema.listarProdutos()) {
+-                int qtd = carrinho.getOrDefault(p.getCodigo(), 0);
+-                if (qtd > 0 && !sistema.adicionarItem(pedidoAtual, p.getCodigo(), qtd)) {
+-                    JOptionPane.showMessageDialog(this, "Nao foi possivel atualizar o pedido.");
+-                    sistema.cancelarPedido(pedidoAtual);
+-                    pedidoAtual = null;
+-                    carrinho.clear();
+-                    break;
+-                }
+-            }
++        // A tela pede a mudança, e o Sistema confere se a quantidade é válida.
++        try {
++            if (pedidoAtual == null && novo > 0) {
++                pedidoAtual = sistema.criarPedido(clienteAtual);
++            }
++            if (pedidoAtual != null && !sistema.definirQuantidadeItem(
++                    pedidoAtual, produto.getCodigo(), novo)) {
++                throw new IllegalStateException("Nao foi possivel atualizar o pedido.");
++            }
++            if (novo == 0) carrinho.remove(produto.getCodigo());
++            else carrinho.put(produto.getCodigo(), novo);
++            if (carrinho.isEmpty() && pedidoAtual != null) {
++                sistema.cancelarPedido(pedidoAtual);
++                pedidoAtual = null;
++            }
++        } catch (EstoqueInsuficienteException | IllegalArgumentException e) {
++            JOptionPane.showMessageDialog(this, e.getMessage());
++        } catch (IllegalStateException e) {
++            JOptionPane.showMessageDialog(this, e.getMessage());
+         }
+         atualizarTelaCliente();
+     }
+@@ -183,7 +181,13 @@
+         String forma = pagamento.getSelectedItem().equals("PIX") ? "PIX" : "CARTAO";
+         double total = pedidoAtual.calcularTotal();
+         int numero = pedidoAtual.getNumero();
+-        boolean ok = sistema.finalizarPedido(pedidoAtual, forma);
++        boolean ok;
++        try {
++            ok = sistema.finalizarPedido(pedidoAtual, forma);
++        } catch (EstoqueInsuficienteException e) {
++            JOptionPane.showMessageDialog(this, e.getMessage());
++            return;
++        }
+         if (ok) {
+             JOptionPane.showMessageDialog(this, "Pedido " + numero + " finalizado!\nTotal: " + dinheiro(total)
+                     + "\nPagamento: " + forma + " (simulado)");
+@@ -217,6 +221,7 @@
+     }
+ 
+     private void sairDaConta() {
++        sistema.removerObservador(observador);
+         if (pedidoAtual != null) sistema.cancelarPedido(pedidoAtual);
+         pedidoAtual = null;
+         carrinho.clear();
+--- original/Gui/TelaCliente_Comentada.java
++++ Sprint 4/Gui/TelaCliente_Comentada.java
+@@ -1,3 +1,5 @@
++// Esta é uma versão anterior da tela do cliente, guardada para comparação.
++// O programa abre a TelaCliente.java.
+ import javax.swing.*;
+ import javax.swing.border.EmptyBorder;
+ import java.awt.*;
+@@ -6,15 +8,15 @@
+ import java.util.Locale;
+ import java.util.Map;
+ 
+-// Aqui fica a tela que o cliente usa depois de entrar na conta.
+-// As compras e os pedidos continuam sendo tratados pela classe Sistema.
+-public class TelaCliente extends JPanel {
+-    // Guardo o sistema e o cliente que fez login.
++// Tela de compras que aparece depois do login.
++// Os pedidos continuam passando pela classe Sistema.
++class TelaCliente_Comentada extends JPanel {
++    // Guardo a sessão do cliente para usar nas compras.
+     private final Sistema sistema;
+     private final Cliente clienteAtual;
+     private final Runnable onSair;
+     private Pedido pedidoAtual;
+-    // O carrinho guarda o codigo do produto e a quantidade escolhida.
++    // No carrinho, cada código fica ligado à quantidade escolhida.
+     private final Map<Integer, Integer> carrinho = new LinkedHashMap<>();
+     private JPanel painelProdutos;
+     private JTextArea resumoCarrinho;
+@@ -22,8 +24,8 @@
+     private JComboBox<String> pagamento;
+     private final Color azul = new Color(29, 74, 181);
+ 
+-    // Recebo as informacoes do login e monto a tela do cliente.
+-    public TelaCliente(Sistema sistema, Cliente clienteAtual, Runnable onSair) {
++    // Recebe o cliente do login e prepara a tela.
++    public TelaCliente_Comentada(Sistema sistema, Cliente clienteAtual, Runnable onSair) {
+         super(new BorderLayout());
+         this.sistema = sistema;
+         this.clienteAtual = clienteAtual;
+@@ -31,7 +33,7 @@
+         montarTela();
+     }
+ 
+-    // Uso este metodo pra manter o mesmo estilo nos titulos.
++    // Mantém os títulos com a mesma aparência.
+     private JLabel titulo(String texto) {
+         JLabel label = new JLabel(texto, JLabel.CENTER);
+         label.setFont(new Font("Times New Roman", Font.BOLD, 29));
+@@ -39,7 +41,7 @@
+         return label;
+     }
+ 
+-    // Deixo os botoes principais com a mesma cor.
++    // Cor usada nos botões principais.
+     private JButton botao(String texto) {
+         JButton b = new JButton(texto);
+         b.setBackground(azul);
+@@ -48,7 +50,7 @@
+         return b;
+     }
+ 
+-    // Aqui monto a tela: botoes em cima, produtos no meio e carrinho ao lado.
++    // Organiza a tela com os produtos ao centro e o carrinho à direita.
+     private void montarTela() {
+         JPanel principal = new JPanel(new BorderLayout(12, 12));
+         principal.setBorder(new EmptyBorder(12, 14, 12, 14));
+@@ -64,7 +66,7 @@
+         topo.add(acoes, BorderLayout.EAST);
+         principal.add(topo, BorderLayout.NORTH);
+ 
+-        // A lista fica com rolagem pra caber todos os medicamentos.
++        // A rolagem ajuda quando a lista de produtos fica grande.
+         painelProdutos = new JPanel();
+         painelProdutos.setLayout(new BoxLayout(painelProdutos, BoxLayout.Y_AXIS));
+         JScrollPane rolagem = new JScrollPane(painelProdutos);
+@@ -72,7 +74,7 @@
+         rolagem.getVerticalScrollBar().setUnitIncrement(12);
+         principal.add(rolagem, BorderLayout.CENTER);
+ 
+-        // O carrinho fica na lateral, separado da lista de produtos.
++        // Separação entre a lista de produtos e o carrinho.
+         JPanel lateral = new JPanel(new BorderLayout(8, 8));
+         lateral.setPreferredSize(new Dimension(245, 0));
+         lateral.setBorder(BorderFactory.createTitledBorder("Carrinho de compras"));
+@@ -87,7 +89,7 @@
+         resumoCarrinho.setFont(new Font("SansSerif", Font.PLAIN, 13));
+         lateral.add(new JScrollPane(resumoCarrinho), BorderLayout.CENTER);
+ 
+-        // No final do carrinho mostro o total e a forma de pagamento.
++        // O cliente escolhe como pagar antes de finalizar.
+         JPanel finalizar = new JPanel(new GridLayout(5, 1, 5, 6));
+         valorTotal = new JLabel("Total: R$ 0,00", JLabel.CENTER);
+         valorTotal.setFont(new Font("SansSerif", Font.BOLD, 17));
+@@ -105,14 +107,14 @@
+         add(principal, BorderLayout.CENTER);
+     }
+ 
+-    // Refaco a lista quando alguem aperta + ou - para mostrar a quantidade certa.
++    // Recarrega as quantidades depois de usar os botões + e -.
+     private void atualizarTelaCliente() {
+         painelProdutos.removeAll();
+         for (Produto produto : sistema.listarProdutos()) {
+             JPanel linha = new JPanel(new BorderLayout(10, 4));
+             linha.setBorder(new EmptyBorder(9, 10, 9, 10));
+             linha.setMaximumSize(new Dimension(Integer.MAX_VALUE, 78));
+-            // O cliente ve apenas nome e preco. O estoque nao aparece aqui.
++            // Nesta tela mostro só o nome e o preço do produto.
+             JPanel descricao = new JPanel(new GridLayout(2, 1));
+             descricao.add(new JLabel(produto.getNome()));
+             descricao.add(new JLabel(dinheiro(produto.getPreco())));
+@@ -135,12 +137,12 @@
+         atualizarResumo();
+     }
+ 
+-    // Formato os valores em reais para mostrar na tela.
++    // Mostra o preço no formato de reais.
+     private String dinheiro(double valor) {
+         return String.format(Locale.forLanguageTag("pt-BR"), "R$ %.2f", valor);
+     }
+ 
+-    // Somo os produtos escolhidos e atualizo o valor do carrinho.
++    // Atualiza o resumo com a quantidade e o total de cada produto.
+     private void atualizarResumo() {
+         StringBuilder texto = new StringBuilder();
+         double total = 0;
+@@ -156,12 +158,12 @@
+         valorTotal.setText("Total: " + dinheiro(total));
+     }
+ 
+-    // O + adiciona uma unidade e o - retira uma.
++    // Os botões mudam a quantidade de um em um.
+     private void alterarQuantidade(Produto produto, int diferenca) {
+         int atual = carrinho.getOrDefault(produto.getCodigo(), 0);
+         int novo = atual + diferenca;
+         if (novo < 0) return;
+-        // Mesmo sem mostrar o estoque, nao deixo passar do disponivel.
++        // Confere o estoque antes de aumentar a quantidade.
+         if (novo > produto.getQuantidade()) {
+             JOptionPane.showMessageDialog(this, "Quantidade indisponivel para compra.");
+             return;
+@@ -169,9 +171,8 @@
+         if (novo == 0) carrinho.remove(produto.getCodigo());
+         else carrinho.put(produto.getCodigo(), novo);
+ 
+-        // Como Pedido nao tem um metodo pra tirar itens,
+-        // refaco o pedido quando muda alguma quantidade.        // O Pedido nao possui metodo para remover itens. Por isso a tela
+-        // cancela o pedido aberto e cria outro com as quantidades atualizadas.
++        // Nesta versão, ao mudar a quantidade, o pedido é montado novamente.
++        // Na Sprint 4 isso foi trocado por uma atualização no mesmo pedido.
+         if (pedidoAtual != null) {
+             sistema.cancelarPedido(pedidoAtual);
+             pedidoAtual = null;
+@@ -192,13 +193,13 @@
+         atualizarTelaCliente();
+     }
+ 
+-    // Confiro se tem itens e finalizo usando o metodo do Sistema.
++    // Só tenta finalizar se houver produtos no carrinho.
+     private void finalizarPedido() {
+         if (pedidoAtual == null || carrinho.isEmpty()) {
+             JOptionPane.showMessageDialog(this, "Adicione produtos ao carrinho primeiro.");
+             return;
+         }
+-        // PIX e cartao sao opcoes de pagamento simulado.
++        // PIX e cartão são apenas simulações, sem cobrança real.
+         String forma = pagamento.getSelectedItem().equals("PIX") ? "PIX" : "CARTAO";
+         double total = pedidoAtual.calcularTotal();
+         int numero = pedidoAtual.getNumero();
+@@ -214,7 +215,7 @@
+         }
+     }
+ 
+-    // Busco os pedidos desse cliente e mostro os detalhes numa janela.
++    // Mostra o histórico de compras desse cliente.
+     private void mostrarHistorico() {
+         ArrayList<Pedido> pedidos = sistema.listarPedidos(clienteAtual);
+         if (pedidos.isEmpty()) {
+@@ -236,7 +237,7 @@
+         JOptionPane.showMessageDialog(this, new JScrollPane(area), "Historico de compras", JOptionPane.INFORMATION_MESSAGE);
+     }
+ 
+-    // Ao sair, limpo o carrinho e volto para a tela de login.
++    // Limpa o pedido aberto antes de voltar ao login.
+     private void sairDaConta() {
+         if (pedidoAtual != null) sistema.cancelarPedido(pedidoAtual);
+         pedidoAtual = null;
+--- original/Gui/TelaFarmacia.java
++++ Sprint 4/Gui/TelaFarmacia.java
+@@ -4,11 +4,11 @@
+ import java.awt.Color;
+ import javax.swing.JPanel;
+ import java.awt.GridLayout;
+-import javax.swing.JTextField;//campo de texto
+-import javax.swing.BorderFactory;//margens do paieel
+-import javax.swing.JPasswordField;//senha
+-import javax.swing.JButton;//cria botao
+-import javax.swing.JOptionPane;//exibe janelas de confirmaçao
++import javax.swing.JTextField;
++import javax.swing.BorderFactory;
++import javax.swing.JPasswordField;
++import javax.swing.JButton;
++import javax.swing.JOptionPane;
+ import java.awt.BorderLayout;
+ import javax.swing.JScrollPane;
+ 
+@@ -18,44 +18,44 @@
+     private Sistema sistema = new Sistema();
+ 
+     public TelaFarmacia() {
+-        setTitle("Trabalho farmacia");//nome superior
+-        setSize(600, 500);//tamanho da janela
+-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);//encerra op rograma
++        setTitle("Trabalho farmacia");
++        setSize(600, 500);
++        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+         setLocationRelativeTo(null);
+         mostrarTelaLogin();
+     }
+ 
+     private void mostrarTelaLogin() {
+         JPanel painel = new JPanel();
+-        //campo cpf
++        // O CPF e a senha ficam na primeira tela.
+         painel.setLayout(new GridLayout(8, 1, 10, 10));
+         painel.setBorder(BorderFactory.createEmptyBorder(40, 80, 40, 80));
+-        //titulos
+-        JLabel titulo = new JLabel("FARMA AURA", JLabel.CENTER);//nome da farmacia+local de onde ele aparece
+-        titulo.setFont(new Font("Times New Roman", Font.BOLD, 30));//fonte e tamanho
+-        titulo.setForeground(Color.BLUE);//cor da fonte
++        // Título da farmácia.
++        JLabel titulo = new JLabel("FARMA AURA", JLabel.CENTER);
++        titulo.setFont(new Font("Times New Roman", Font.BOLD, 30));
++        titulo.setForeground(Color.BLUE);
+ 
+-        painel.add(titulo);//titulo vai pra dentro de um painel ao inves de estar na janela
++        painel.add(titulo);
+ 
+-        painel.add(new JLabel("CPF:"));//campo cpf
++        painel.add(new JLabel("CPF:"));
+         painel.add(campoCpf);
+         
+-        painel.add(new JLabel("Senha:"));//campo senha
++        painel.add(new JLabel("Senha:"));
+         painel.add(campoSenha);
+ 
+-        //botao entrar
++        // Entra na conta com os dados informados.
+         JButton botaoEntrar = new JButton("Entrar");
+         botaoEntrar.setBackground(Color.BLUE);
+         botaoEntrar.setForeground(Color.WHITE);
+         botaoEntrar.addActionListener(e -> fazerLogin());
+         painel.add(botaoEntrar);
+-        //botao cadastro
++        // Abre o cadastro de cliente.
+         JButton botaoCadastro = new JButton("Cadastrar");
+         botaoCadastro.setBackground(Color.WHITE);
+         botaoCadastro.setForeground(Color.BLUE);
+         botaoCadastro.addActionListener(e -> mostrarTelaCadastro());
+         painel.add(botaoCadastro);
+-        //botao catalogo
++        // Dá para consultar o catálogo mesmo sem fazer login.
+         JButton botaoCatalogo = new JButton("Ver catálogo");
+         botaoCatalogo.setBackground(Color.WHITE);
+         botaoCatalogo.setForeground(Color.BLUE);
+@@ -67,7 +67,7 @@
+         repaint();
+     }
+ 
+-    private void fazerLogin() {//func. login
++    private void fazerLogin() { // Login de cliente ou funcionário.
+         String cpf = campoCpf.getText();
+         String senha = new String(campoSenha.getPassword());
+ 
+@@ -87,7 +87,7 @@
+         
+         painel.setLayout(new GridLayout(8, 1, 10, 10));
+         painel.setBorder(BorderFactory.createEmptyBorder(40, 80, 40, 80));
+-        //titulos
++        // Título da farmácia.
+         JLabel titulo = new JLabel("FARMA AURA", JLabel.CENTER);
+         titulo.setFont(new Font("Times New Roman", Font.BOLD, 30));
+         titulo.setForeground(Color.BLUE);
+@@ -99,16 +99,16 @@
+         painel.add(titulo);
+         painel.add(new JLabel("Cria a sua conta:", JLabel.CENTER));
+ 
+-        painel.add(new JLabel("Nome:"));//campo cpf
++        painel.add(new JLabel("Nome:"));
+         painel.add(campoNome);
+ 
+-        painel.add(new JLabel("CPF:"));//campo cpf
++        painel.add(new JLabel("CPF:"));
+         painel.add(campoCpf);
+         
+-        painel.add(new JLabel("Senha:"));//campo senha
++        painel.add(new JLabel("Senha:"));
+         painel.add(campoSenha);
+ 
+-        //botao cadastrar
++        // Salva os dados e volta para o login.
+         JButton botaoCadastrar = new JButton("Cadastrar");
+         botaoCadastrar.setBackground(Color.BLUE);
+         botaoCadastrar.setForeground(Color.WHITE);
+@@ -118,7 +118,7 @@
+         new String(campoSenha.getPassword())));
+ 
+         painel.add(botaoCadastrar);
+-        //botao voltar a tela anterior
++        // Volta sem fazer o cadastro.
+         JButton botaoVoltar = new JButton("Voltar");
+         botaoVoltar.setBackground(Color.WHITE);
+         botaoVoltar.setForeground(Color.BLUE);
+@@ -173,7 +173,10 @@
+     }
+ 
+     private void mostrarTelaCliente(Cliente cliente) {
+-        JOptionPane.showMessageDialog(this, "Bem-vindo, cliente " + cliente.getNome());
++        // Uso o mesmo Sistema para manter os dados da conta e das compras.
++        setContentPane(new TelaCliente(sistema, cliente, this::voltarAoLogin));
++        revalidate();
++        repaint();
+     }
+     
+     private void mostrarTelaFuncionario(Funcionario funcionario) {
+@@ -181,7 +184,7 @@
+         new TelaFuncionario(sistema, funcionario, this).setVisible(true);
+     }
+ 
+-    //retorna para a tela de login
++    // Limpa os campos para o próximo login.
+     public void voltarAoLogin() {
+         campoCpf.setText("");
+         campoSenha.setText("");
+@@ -189,7 +192,6 @@
+         setVisible(true);
+     }
+     public static void main(String[] args) {
+-        TelaFarmacia tela = new TelaFarmacia();
+-        tela.setVisible(true);
++        javax.swing.SwingUtilities.invokeLater(() -> new TelaFarmacia().setVisible(true));
+     }
+ }--- original/Gui/TelaFuncionario.java
++++ Sprint 4/Gui/TelaFuncionario.java
+@@ -1,5 +1,5 @@
+ import javax.swing.BorderFactory;
+-import javax.swing.JButton;//Cria botão;
++import javax.swing.JButton;
+ import javax.swing.JFrame;
+ import javax.swing.JLabel;
+ import javax.swing.JOptionPane;
+@@ -8,9 +8,9 @@
+ import javax.swing.JTabbedPane;
+ import javax.swing.JTable;
+ import javax.swing.JTextArea;
+-import javax.swing.JTextField;//Campo de texto;
++import javax.swing.JTextField;
+ import javax.swing.table.DefaultTableModel;
+-import java.awt.BorderLayout;//Margens do painel;
++import java.awt.BorderLayout;
+ import java.awt.Color;
+ import java.awt.Font;
+ import java.awt.GridLayout;
+@@ -25,7 +25,7 @@
+ 
+     private final JTabbedPane abas = new JTabbedPane();
+ 
+-    //Primeira Aba - Mostra produtos e o estoque;
++    // Tabela dos produtos cadastrados, só para consulta.
+     private final DefaultTableModel modeloProdutos = new DefaultTableModel(
+             new String[]{"Codigo", "Produto", "Preco", "Estoque"}, 0) {
+         @Override
+@@ -34,23 +34,25 @@
+         }
+     };
+ 
+-    //Segunda Aba - Cadastra o produto;
++    // Campos usados no cadastro de produtos.
+     private final JTextField campoCadCodigo = new JTextField();
+     private final JTextField campoCadNome = new JTextField();
+     private final JTextField campoCadPreco = new JTextField();
+     private final JTextField campoCadEstoque = new JTextField();
+ 
+-    //Terceira Aba - Serve para modificar os valores dos produtos;
++    // Campos para atualizar o preço de um produto.
+     private final JTextField campoPrecoCodigo = new JTextField();
+     private final JTextField campoPrecoNovo = new JTextField();
+ 
+-    //Quarta Aba - Repoe o estoque dos produtos;
++    // Campos para adicionar unidades ao estoque.
+     private final JTextField campoEstoqueCodigo = new JTextField();
+     private final JTextField campoEstoqueQtd = new JTextField();
+ 
+-    //Quinta Aba e a Setxa, mostram os pedidos e as vendas;
++    // Áreas em que aparecem os pedidos e o relatório de vendas.
+     private final JTextArea areaPedidos = new JTextArea();
+     private final JTextArea areaRelatorio = new JTextArea();
++    private final ObservadorSistema observador = () ->
++            javax.swing.SwingUtilities.invokeLater(this::atualizarTudo);
+ 
+     public TelaFuncionario(Sistema sistema, Funcionario funcionario, TelaFarmacia telaLogin) {
+         this.sistema = sistema;
+@@ -66,7 +68,7 @@
+         add(criarTopo(), BorderLayout.NORTH);
+         add(abas, BorderLayout.CENTER);
+         add(criarRodape(), BorderLayout.SOUTH);
+-        //Layout do aplicativo e das Abas;
++        // Cada função do funcionário fica em uma aba.
+ 
+         abas.addTab("Produtos e estoque", criarAbaProdutos());
+         abas.addTab("Cadastrar produto", criarFormulario("Cadastrar produto",
+@@ -85,11 +87,12 @@
+         abas.addTab("Relatorio de vendas", criarAbaTexto(areaRelatorio));
+ 
+         abas.addChangeListener(e -> atualizarTudo());
++        sistema.adicionarObservador(observador);
+         atualizarTudo();
+-        //Faz uma atualização a cada mudança de Aba;
+-    }
+-
+-    //TELA;
++        // Atualiza os dados ao trocar de aba ou quando o Sistema muda.
++    }
++
++    // Parte superior com o nome da farmácia e o usuário logado.
+     private JPanel criarTopo() {
+         JPanel topo = new JPanel(new BorderLayout());
+         topo.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+@@ -170,7 +173,7 @@
+         return botao;
+     }
+ 
+-    //Funções do Sistema;
++    // Os botões chamam o Sistema, que faz as validações.
+     private void cadastrarProduto() {
+         try {
+             int codigo = Integer.parseInt(campoCadCodigo.getText().trim());
+@@ -233,11 +236,12 @@
+     }
+ 
+     private void sairDaConta() {
++        sistema.removerObservador(observador);
+         dispose();
+         telaLogin.voltarAoLogin();
+     }
+ 
+-    //Atulização dos Dados;
++    // Recarrega a tabela e os relatórios depois das alterações.
+     private void atualizarTudo() {
+         atualizarProdutos();
+         atualizarPedidos();
+@@ -285,7 +289,7 @@
+         areaPedidos.setCaretPosition(0);
+     }
+ 
+-    //Faz vírgula ou ponto funcionar para os números;
++    // Aceita valores digitados com vírgula ou ponto.
+     private double lerDecimal(String texto) {
+         return Double.parseDouble(texto.trim().replace(',', '.'));
+     }
