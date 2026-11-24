@@ -44,7 +44,7 @@ public class TelaFarmacia extends JFrame {
             titulo.setForeground(Color.BLUE);//cor da fonte
         */
 
-        painel.add(criarTitulo("FARMA AURA"));//titulo vai pra dentro de um painel ao inves de estar na janela
+        painel.add(criarTitulo("FARMA AURA"));//titulo é adicionado com a função criada
 
         painel.add(new JLabel("CPF:"));//campo cpf
         painel.add(campoCpf);
