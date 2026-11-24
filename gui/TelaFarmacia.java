@@ -24,6 +24,13 @@ public class TelaFarmacia extends JFrame {
         setLocationRelativeTo(null);
         mostrarTelaLogin();
     }
+    
+    private JLabel criarTitulo(String texto) {
+        JLabel titulo = new JLabel(texto, JLabel.CENTER);
+        titulo.setFont(new Font("Times New Roman", Font.BOLD, 30));
+        titulo.setForeground(Color.BLUE);
+        return titulo;
+    }
 
     private void mostrarTelaLogin() {
         JPanel painel = new JPanel();
@@ -31,11 +38,13 @@ public class TelaFarmacia extends JFrame {
         painel.setLayout(new GridLayout(8, 1, 10, 10));
         painel.setBorder(BorderFactory.createEmptyBorder(40, 80, 40, 80));
         //titulos
-        JLabel titulo = new JLabel("FARMA AURA", JLabel.CENTER);//nome da farmacia+local de onde ele aparece
-        titulo.setFont(new Font("Times New Roman", Font.BOLD, 30));//fonte e tamanho
-        titulo.setForeground(Color.BLUE);//cor da fonte
+        /*
+            JLabel titulo = new JLabel("FARMA AURA", JLabel.CENTER);//nome da farmacia+local de onde ele aparece
+            titulo.setFont(new Font("Times New Roman", Font.BOLD, 30));//fonte e tamanho
+            titulo.setForeground(Color.BLUE);//cor da fonte
+        */
 
-        painel.add(titulo);//titulo vai pra dentro de um painel ao inves de estar na janela
+        painel.add(criarTitulo("FARMA AURA"));//titulo vai pra dentro de um painel ao inves de estar na janela
 
         painel.add(new JLabel("CPF:"));//campo cpf
         painel.add(campoCpf);
@@ -88,15 +97,17 @@ public class TelaFarmacia extends JFrame {
         painel.setLayout(new GridLayout(8, 1, 10, 10));
         painel.setBorder(BorderFactory.createEmptyBorder(40, 80, 40, 80));
         //titulos
-        JLabel titulo = new JLabel("FARMA AURA", JLabel.CENTER);
-        titulo.setFont(new Font("Times New Roman", Font.BOLD, 30));
-        titulo.setForeground(Color.BLUE);
+        /*
+            JLabel titulo = new JLabel("FARMA AURA", JLabel.CENTER);
+            titulo.setFont(new Font("Times New Roman", Font.BOLD, 30));
+            titulo.setForeground(Color.BLUE);
+        */
 
         JTextField campoNome = new JTextField();
         JTextField campoCpf = new JTextField();
         JPasswordField campoSenha = new JPasswordField();
 
-        painel.add(titulo);
+        painel.add(criarTitulo("FARMA AURA"));
         painel.add(new JLabel("Cria a sua conta:", JLabel.CENTER));
 
         painel.add(new JLabel("Nome:"));//campo cpf
@@ -144,12 +155,12 @@ public class TelaFarmacia extends JFrame {
         JPanel painel = new JPanel();
         painel.setLayout(new BorderLayout(10, 10));
         painel.setBorder(BorderFactory.createEmptyBorder(40, 80, 40, 80));
-
-        JLabel titulo = new JLabel("Catálogo de produtos", JLabel.CENTER);
-        titulo.setFont(new Font("Times New Roman", Font.BOLD, 30));
-        titulo.setForeground(Color.BLUE);
-
-        painel.add(titulo, BorderLayout.NORTH);
+        /*
+            JLabel titulo = new JLabel("Catálogo de produtos", JLabel.CENTER);
+            titulo.setFont(new Font("Times New Roman", Font.BOLD, 30));
+            titulo.setForeground(Color.BLUE);
+        */
+        painel.add(criarTitulo("Catálogo de produtos"), BorderLayout.NORTH);
 
         JPanel listaProdutos = new JPanel();
         listaProdutos.setLayout(new GridLayout(0, 1, 10, 10));
