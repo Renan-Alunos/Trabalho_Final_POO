@@ -43,7 +43,7 @@ public class Sistema{
         }
         for (Usuario usuario : usuarios) {
             if (usuario.getCpf().equals(cpf)) {
-                throw new IllegalArgumentException("CPF ja cadastrado!");
+                throw new CpfJaCadastradoException();
             }
         }
         Cliente cliente = new Cliente(nome, cpf, senha);
