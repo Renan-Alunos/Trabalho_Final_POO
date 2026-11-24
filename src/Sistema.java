@@ -38,8 +38,14 @@ public class Sistema{
     }
 
     public Cliente cadastrarCliente(String nome, String cpf, String senha) {
-        if (nome == null || nome.isBlank() || cpf == null || !cpf.matches("\\d{11}") || senha == null || senha.isBlank()) {
-            throw new IllegalArgumentException("Dados invalidos!");
+        if (nome == null || nome.isBlank()) {
+            throw new IllegalArgumentException("O nome nao pode estar vazio!");
+        }
+        if (cpf == null || !cpf.matches("\\d{11}")) {
+            throw new IllegalArgumentException("O CPF deve conter 11 numeros!");
+        }
+        if (senha == null || senha.isBlank()) {
+            throw new IllegalArgumentException("A senha nao pode estar vazia!");
         }
         for (Usuario usuario : usuarios) {
             if (usuario.getCpf().equals(cpf)) {
