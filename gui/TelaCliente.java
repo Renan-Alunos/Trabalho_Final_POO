@@ -156,6 +156,8 @@ public class TelaCliente extends JPanel {
     }
 
     // O + adiciona uma unidade e o - retira uma.
+    // So mexo no carrinho aqui. O pedido so e criado ao finalizar,
+    // assim os numeros dos pedidos nao ficam pulando a cada clique.
     private void alterarQuantidade(Produto produto, int diferenca) {
         int atual = carrinho.getOrDefault(produto.getCodigo(), 0);
         int novo = atual + diferenca;
@@ -167,12 +169,10 @@ public class TelaCliente extends JPanel {
         }
         if (novo == 0) carrinho.remove(produto.getCodigo());
         else carrinho.put(produto.getCodigo(), novo);
-
-        // O carrinho e so uma lista na tela. O Pedido so e criado ao finalizar.
         atualizarTelaCliente();
     }
 
-    // Confiro se tem itens, crio o pedido so agora e finalizo usando o Sistema.
+    // Crio o pedido a partir do carrinho e finalizo usando o metodo do Sistema.
     private void finalizarPedido() {
         if (carrinho.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Adicione produtos ao carrinho primeiro.");
@@ -180,17 +180,21 @@ public class TelaCliente extends JPanel {
         }
         // PIX e cartao sao opcoes de pagamento simulado.
         String forma = pagamento.getSelectedItem().equals("PIX") ? "PIX" : "CARTAO";
-
-        // O pedido nasce aqui, por isso o numero fica em sequencia (1, 2, 3...).
-        Pedido pedido = sistema.criarPedido(clienteAtual);
-        for (Map.Entry<Integer, Integer> item : carrinho.entrySet()) {
-            if (!sistema.adicionarItem(pedido, item.getKey(), item.getValue())) {
-                sistema.cancelarPedido(pedido);
-                JOptionPane.showMessageDialog(this, "Nao foi possivel adicionar os itens ao pedido.");
-                return;
-            }
+        Pedido pedido;
+        try {
+            pedido = sistema.atualizarPedidoDoCarrinho(clienteAtual, null, carrinho);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage());
+            // O estoque pode ter mudado: tiro do carrinho o que nao esta mais disponivel.
+            carrinho.entrySet().removeIf(item -> {
+                for (Produto p : sistema.listarProdutos()) {
+                    if (p.getCodigo() == item.getKey()) return item.getValue() > p.getQuantidade();
+                }
+                return true;
+            });
+            atualizarTelaCliente();
+            return;
         }
-
         double total = pedido.calcularTotal();
         int numero = pedido.getNumero();
         if (sistema.finalizarPedido(pedido, forma)) {
