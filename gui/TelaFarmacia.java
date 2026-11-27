@@ -32,6 +32,12 @@ public class TelaFarmacia extends JFrame {
         return titulo;
     }
 
+    private void atualizarPainel(JPanel painel) {
+        setContentPane(painel);
+        revalidate();
+        repaint();
+    }
+
     private void mostrarTelaLogin() {
         JPanel painel = new JPanel();
         //campo cpf
@@ -71,9 +77,7 @@ public class TelaFarmacia extends JFrame {
         botaoCatalogo.addActionListener(e -> mostrarCatalogo());
         painel.add(botaoCatalogo);
 
-        setContentPane(painel);
-        revalidate();
-        repaint();
+        atualizarPainel(painel);
     }
 
     private void fazerLogin() {//func. login
@@ -136,9 +140,7 @@ public class TelaFarmacia extends JFrame {
         botaoVoltar.addActionListener(e -> mostrarTelaLogin());
         painel.add(botaoVoltar);
 
-        setContentPane(painel);
-        revalidate();
-        repaint();
+        atualizarPainel(painel);
     }
 
     private void cadastrarCliente(String nome, String cpf, String senha){
@@ -178,29 +180,19 @@ public class TelaFarmacia extends JFrame {
 
         painel.add(botaoVoltar, BorderLayout.SOUTH);
 
-        setContentPane(painel);
-        revalidate();
-        repaint();
+        atualizarPainel(painel);
     }
 
     private void mostrarTelaCliente(Cliente cliente) {
         setSize(1000, 650);
         setLocationRelativeTo(null);
 
-        setContentPane(new TelaCliente(sistema, cliente, this::voltarAoLogin));
-
-        revalidate();
-        repaint();
+        atualizarPainel(new TelaCliente(sistema, cliente, this::voltarAoLogin));
     }
     
     private void mostrarTelaFuncionario(Funcionario funcionario) {
-        setSize(700, 550);
-        setLocationRelativeTo(null);
-
-        setContentPane(new TelaFuncionario(sistema, funcionario, this::voltarAoLogin));
-
-        revalidate();
-        repaint();
+        setVisible(false);
+        new TelaFuncionario(sistema, funcionario, this).setVisible(true);
     }
 
     //retorna para a tela de login
