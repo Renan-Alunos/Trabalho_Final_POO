@@ -1,5 +1,8 @@
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.Map;
 /*
   CADASTRAR CLIENTES, CADASTRAR PRODUTOS,
   REALIZAR PEDIDOS, GERAR RELATÓRIOS DE VENDAS, VER ESTOQUE
@@ -19,12 +22,20 @@ public class Sistema{
         Funcionario administrador = new Funcionario("Administrador","00000000000","admin123","F01");
         usuarios.add(administrador);
 
-        //produtos iniciais
-        catalogo.adicionarProduto(new Produto(1, "Dipirona 500mg", 12.50, 5));//(codigo, nome, preço, quantidade)
-        catalogo.adicionarProduto(new Produto(2, "Paracetamol 750mg", 9.90, 10));
-        catalogo.adicionarProduto(new Produto(3, "Ibuprofeno 400mg", 15.90, 6));
-        catalogo.adicionarProduto(new Produto(4, "Vitamina C", 19.90, 5));
-        catalogo.adicionarProduto(new Produto(5, "Soro Fisiológico", 7.50, 10));
+        //carrega o catálogo salvo; se não existir (ou estiver danificado), usa os produtos iniciais
+        if (!catalogo.carregar()) {
+            catalogo.adicionarProduto(new Produto(1, "Dipirona 500mg", 12.50, 5));//(codigo, nome, preço, quantidade)
+            catalogo.adicionarProduto(new Produto(2, "Paracetamol 750mg", 9.90, 10));
+            catalogo.adicionarProduto(new Produto(3, "Ibuprofeno 400mg", 15.90, 6));
+            catalogo.adicionarProduto(new Produto(4, "Vitamina C", 19.90, 5));
+            catalogo.adicionarProduto(new Produto(5, "Soro Fisiológico", 7.50, 10));
+            catalogo.salvar();
+        }
+    }
+
+    //arredonda para centavos (evita preco com 3+ casas, ex.: 9,999)
+    private double arredondar(double valor) {
+        return BigDecimal.valueOf(valor).setScale(2, RoundingMode.HALF_UP).doubleValue();
     }
     
     //login usuário
@@ -38,12 +49,23 @@ public class Sistema{
     }
 
     public Cliente cadastrarCliente(String nome, String cpf, String senha) {
-        if (nome == null || nome.isBlank() || cpf == null || !cpf.matches("\\d{11}") || senha == null || senha.isBlank()) {
-            throw new IllegalArgumentException("Dados invalidos!");
+        /*
+            if (nome == null || nome.isBlank() || cpf == null || !cpf.matches("\\d{11}") || senha == null || senha.isBlank()) {
+                throw new IllegalArgumentException("Dados invalidos!");
+            }
+        */
+        if (nome == null || nome.isBlank()) {
+            throw new IllegalArgumentException("O nome nao pode estar vazio!");
+        }
+        if (cpf == null || !cpf.matches("\\d{11}")) {
+            throw new IllegalArgumentException("O CPF deve conter 11 numeros!");
+        }
+        if (senha == null || senha.isBlank()) {
+            throw new IllegalArgumentException("A senha nao pode estar vazia!");
         }
         for (Usuario usuario : usuarios) {
             if (usuario.getCpf().equals(cpf)) {
-                throw new IllegalArgumentException("CPF ja cadastrado!");
+                throw new CpfJaCadastradoException();
             }
         }
         Cliente cliente = new Cliente(nome, cpf, senha);
@@ -70,8 +92,12 @@ public class Sistema{
             return false;
         }
 
-        //verifica se os dados são válidos
-        if (codigo <= 0 || nome == null || nome.isBlank() || !Double.isFinite(preco) || preco <= 0 || quantidade < 0){
+        //verifica se os dados são válidos (o preço é arredondado para centavos antes de validar)
+        if (!Double.isFinite(preco)){
+            return false;
+        }
+        preco = arredondar(preco);
+        if (codigo <= 0 || nome == null || nome.isBlank() || preco <= 0 || quantidade < 0){
             return false;
         }
 
@@ -85,6 +111,7 @@ public class Sistema{
 
         //só o funcionário adiciona o produto ao catálogo
         funcionario.adicionarProduto(catalogo, produto);
+        catalogo.salvar();
 
         return true;
     }
@@ -95,8 +122,12 @@ public class Sistema{
             return false;
         }
 
-        //verifica se o preço é válido
-        if (!Double.isFinite(novoPreco) || novoPreco < 0) {
+        //verifica se o preço é válido (mesma regra do cadastro: maior que zero)
+        if (!Double.isFinite(novoPreco)) {
+            return false;
+        }
+        novoPreco = arredondar(novoPreco);
+        if (novoPreco <= 0) {
             return false;
         }
 
@@ -110,6 +141,7 @@ public class Sistema{
 
         //altera preço
         funcionario.alterarPreco(produto, novoPreco);
+        catalogo.salvar();
 
         return true;
     }
@@ -122,6 +154,7 @@ public class Sistema{
         }
 
         produto.adicionarEstoque(quantidade);
+        catalogo.salvar();
         return true;
     }
 
@@ -158,6 +191,47 @@ public class Sistema{
         return true;
     }
 
+    //atualiza o pedido a partir do carrinho da tela
+    public Pedido atualizarPedidoDoCarrinho(Cliente cliente, Pedido pedidoAnterior, Map<Integer, Integer> carrinho) {
+        if (cliente == null || !usuarios.contains(cliente) || carrinho == null) {
+            throw new IllegalArgumentException("Dados invalidos para atualizar o pedido.");
+        }
+
+        if (pedidoAnterior != null &&
+                (!pedidosAbertos.contains(pedidoAnterior) || pedidoAnterior.getCliente() != cliente)) {
+            throw new IllegalArgumentException("Pedido anterior invalido.");
+        }
+        //verifica os produtos antes de modificar o pedido
+        for (Map.Entry<Integer, Integer> item : carrinho.entrySet()) {
+            Integer codigo = item.getKey();
+            Integer quantidade = item.getValue();
+
+            Produto produto = codigo == null ? null : catalogo.buscarProduto(codigo);
+
+            if (produto == null || quantidade == null || quantidade <= 0 || quantidade > produto.getQuantidade()) {
+                throw new IllegalArgumentException("Quantidade indisponivel para compra.");
+            }
+        }
+
+        if (pedidoAnterior != null) {
+            cancelarPedido(pedidoAnterior);
+        }
+
+        if (carrinho.isEmpty()) {
+            return null;
+        }
+
+        Pedido novoPedido = criarPedido(cliente);
+
+        for (Map.Entry<Integer, Integer> item : carrinho.entrySet()) {
+            if (!adicionarItem(novoPedido, item.getKey(), item.getValue())) {
+                cancelarPedido(novoPedido);
+                throw new IllegalStateException("Nao foi possivel atualizar o pedido.");
+            }
+        }
+        return novoPedido;
+    }
+
     public boolean cancelarPedido(Pedido pedido) {
         return pedidosAbertos.remove(pedido);
     }
@@ -171,8 +245,7 @@ public class Sistema{
     }
 
     public boolean finalizarPedido(Pedido pedido, Pagamento pagamento) {
-        if (pedido == null || pagamento == null ||
-                !pedidosAbertos.contains(pedido) || pedido.getItens().isEmpty()) {
+        if (pedido == null || pagamento == null || !pedidosAbertos.contains(pedido) || pedido.getItens().isEmpty()) {
             return false;
         }
 
@@ -202,6 +275,7 @@ public class Sistema{
         for (ItemPedido item : pedido.getItens()) {
             item.getProduto().retirarEstoque(item.getQuantidade());
         }
+        catalogo.salvar();
 
         pedido.finalizar(pagamento.getForma());
         pedidosAbertos.remove(pedido);
@@ -251,7 +325,6 @@ public class Sistema{
                              "%.2f", pedido.calcularTotal()))
                      .append("\n");
         }
-
         relatorio.append("Pedidos finalizados: ").append(pedidosFinalizados.size());
         relatorio.append("\nValor vendido: R$ ")
                  .append(String.format(Locale.forLanguageTag("pt-BR"),
