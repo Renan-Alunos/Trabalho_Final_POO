@@ -55,6 +55,9 @@ public class Main {
     }
 
     private static void menuFuncionario(Funcionario funcionario) {//opçoes que aparecem apenas para o funcionario
+        for (String aviso : sistema.retirarAlertasEstoque()) {//avisos de estoque baixo
+            System.out.println("ALERTA - " + aviso);
+        }
         int opcao;
         do {
             System.out.println("\n--- MENU DO FUNCIONARIO ---");
