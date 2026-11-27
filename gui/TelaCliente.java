@@ -172,22 +172,19 @@ public class TelaCliente extends JPanel {
         // Como Pedido nao tem um metodo pra tirar itens,
         // refaco o pedido quando muda alguma quantidade.        // O Pedido nao possui metodo para remover itens. Por isso a tela
         // cancela o pedido aberto e cria outro com as quantidades atualizadas.
-        if (pedidoAtual != null) {
-            sistema.cancelarPedido(pedidoAtual);
-            pedidoAtual = null;
-        }
-        if (!carrinho.isEmpty()) {
-            pedidoAtual = sistema.criarPedido(clienteAtual);
-            for (Produto p : sistema.listarProdutos()) {
-                int qtd = carrinho.getOrDefault(p.getCodigo(), 0);
-                if (qtd > 0 && !sistema.adicionarItem(pedidoAtual, p.getCodigo(), qtd)) {
-                    JOptionPane.showMessageDialog(this, "Nao foi possivel atualizar o pedido.");
-                    sistema.cancelarPedido(pedidoAtual);
-                    pedidoAtual = null;
-                    carrinho.clear();
-                    break;
-                }
+        try {
+            pedidoAtual = sistema.atualizarPedidoDoCarrinho(
+                clienteAtual, pedidoAtual, carrinho);
+
+        } catch (IllegalArgumentException | IllegalStateException erro) {
+            JOptionPane.showMessageDialog(this, erro.getMessage());
+
+            if (pedidoAtual != null) {
+                sistema.cancelarPedido(pedidoAtual);
+                pedidoAtual = null;
             }
+
+            carrinho.clear();
         }
         atualizarTelaCliente();
     }

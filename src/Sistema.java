@@ -1,5 +1,6 @@
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.Map;
 /*
   CADASTRAR CLIENTES, CADASTRAR PRODUTOS,
   REALIZAR PEDIDOS, GERAR RELATÓRIOS DE VENDAS, VER ESTOQUE
@@ -169,6 +170,47 @@ public class Sistema{
         return true;
     }
 
+    //atualiza o pedido a partir do carrinho da tela
+    public Pedido atualizarPedidoDoCarrinho(Cliente cliente, Pedido pedidoAnterior, Map<Integer, Integer> carrinho) {
+        if (cliente == null || !usuarios.contains(cliente) || carrinho == null) {
+            throw new IllegalArgumentException("Dados invalidos para atualizar o pedido.");
+        }
+
+        if (pedidoAnterior != null &&
+                (!pedidosAbertos.contains(pedidoAnterior) || pedidoAnterior.getCliente() != cliente)) {
+            throw new IllegalArgumentException("Pedido anterior invalido.");
+        }
+        //verifica os produtos antes de modificar o pedido
+        for (Map.Entry<Integer, Integer> item : carrinho.entrySet()) {
+            Integer codigo = item.getKey();
+            Integer quantidade = item.getValue();
+
+            Produto produto = codigo == null ? null : catalogo.buscarProduto(codigo);
+
+            if (produto == null || quantidade == null || quantidade <= 0 || quantidade > produto.getQuantidade()) {
+                throw new IllegalArgumentException("Quantidade indisponivel para compra.");
+            }
+        }
+
+        if (pedidoAnterior != null) {
+            cancelarPedido(pedidoAnterior);
+        }
+
+        if (carrinho.isEmpty()) {
+            return null;
+        }
+
+        Pedido novoPedido = criarPedido(cliente);
+
+        for (Map.Entry<Integer, Integer> item : carrinho.entrySet()) {
+            if (!adicionarItem(novoPedido, item.getKey(), item.getValue())) {
+                cancelarPedido(novoPedido);
+                throw new IllegalStateException("Nao foi possivel atualizar o pedido.");
+            }
+        }
+        return novoPedido;
+    }
+
     public boolean cancelarPedido(Pedido pedido) {
         return pedidosAbertos.remove(pedido);
     }
@@ -182,8 +224,7 @@ public class Sistema{
     }
 
     public boolean finalizarPedido(Pedido pedido, Pagamento pagamento) {
-        if (pedido == null || pagamento == null ||
-                !pedidosAbertos.contains(pedido) || pedido.getItens().isEmpty()) {
+        if (pedido == null || pagamento == null || !pedidosAbertos.contains(pedido) || pedido.getItens().isEmpty()) {
             return false;
         }
 
@@ -262,7 +303,6 @@ public class Sistema{
                              "%.2f", pedido.calcularTotal()))
                      .append("\n");
         }
-
         relatorio.append("Pedidos finalizados: ").append(pedidosFinalizados.size());
         relatorio.append("\nValor vendido: R$ ")
                  .append(String.format(Locale.forLanguageTag("pt-BR"),
