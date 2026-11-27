@@ -1,9 +1,5 @@
-import java.util.Locale;
-
-public class Pagamento {
-
-    private String forma;
-
+/*
+    private String forma; -----------------------------
     public Pagamento(String forma) {
         if (forma == null) {
             throw new IllegalArgumentException("Escolha uma forma de pagamento.");
@@ -14,13 +10,39 @@ public class Pagamento {
         }
         this.forma = escolhida;
     }
-
     public String getForma() {
-        return forma;
+        return forma; --------------------------
     }
-
     // Nesta sprint, o pagamento e apenas uma simulacao.
     public boolean processarPagamento(double valor) {
         return Double.isFinite(valor) && valor > 0;
+    }
+}
+*/
+import java.util.Locale;
+
+public class Pagamento {
+    private final EstrategiaPagamento estrategia;
+
+    public Pagamento(String forma) {
+        if (forma == null) {
+            throw new IllegalArgumentException("Escolha uma forma de pagamento.");
+        }
+        String escolhida = forma.trim().toUpperCase(Locale.ROOT);
+        if (escolhida.equals("PIX")) {
+            estrategia = new PagamentoPix();
+        } else if (escolhida.equals("CARTAO")) {
+            estrategia = new PagamentoCartao();
+        } else {
+            throw new IllegalArgumentException("Forma invalida. Escolha PIX ou CARTAO.");
+        }
+    }
+
+    public String getForma() {
+        return estrategia.getForma();
+    }
+
+    public boolean processarPagamento(double valor) {
+        return estrategia.processarPagamento(valor);
     }
 }
