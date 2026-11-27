@@ -1,6 +1,7 @@
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 /*
@@ -17,6 +18,11 @@ public class Sistema{
     private ArrayList<Pedido> pedidosFinalizados = new ArrayList<>();
     private int proximoNumeroPedido = 1;
 
+    //Observer: quem quiser ser avisado das mudanças se registra aqui
+    public static final int LIMITE_ESTOQUE_BAIXO = 3;
+    private final ArrayList<ObservadorSistema> observadores = new ArrayList<>();
+    private final AlertasEstoque alertasEstoque = new AlertasEstoque(LIMITE_ESTOQUE_BAIXO);
+
     public Sistema(){
         //funcionário administrador
         Funcionario administrador = new Funcionario("Administrador","00000000000","admin123","F01");
@@ -31,6 +37,43 @@ public class Sistema{
             catalogo.adicionarProduto(new Produto(5, "Soro Fisiológico", 7.50, 10));
             catalogo.salvar();
         }
+
+        //observadores internos: salvar o catálogo e guardar os avisos de estoque baixo
+        adicionarObservador(new PersistenciaCatalogo(catalogo));
+        adicionarObservador(alertasEstoque);
+
+        //produtos que já estão com estoque baixo ao iniciar também geram aviso
+        for (Produto produto : catalogo.getProdutos()) {
+            if (produto.getQuantidade() <= LIMITE_ESTOQUE_BAIXO) {
+                notificar(EventoSistema.ESTOQUE_BAIXO, produto);
+            }
+        }
+    }
+
+    public void adicionarObservador(ObservadorSistema observador) {
+        if (observador != null && !observadores.contains(observador)) {
+            observadores.add(observador);
+        }
+    }
+
+    public void removerObservador(ObservadorSistema observador) {
+        observadores.remove(observador);
+    }
+
+    //avisa todos os observadores (percorre uma cópia, pois a lista pode mudar durante o aviso)
+    private void notificar(EventoSistema evento, Object dados) {
+        for (ObservadorSistema observador : new ArrayList<>(observadores)) {
+            try {
+                observador.atualizar(evento, dados);
+            } catch (RuntimeException erro) {
+                System.err.println("Erro em um observador: " + erro);
+            }
+        }
+    }
+
+    //devolve (e limpa) os avisos de estoque baixo ainda não vistos pelo funcionário
+    public ArrayList<String> retirarAlertasEstoque() {
+        return alertasEstoque.retirarPendentes();
     }
 
     //arredonda para centavos (evita preco com 3+ casas, ex.: 9,999)
@@ -111,7 +154,7 @@ public class Sistema{
 
         //só o funcionário adiciona o produto ao catálogo
         funcionario.adicionarProduto(catalogo, produto);
-        catalogo.salvar();
+        notificar(EventoSistema.PRODUTO_CADASTRADO, produto);
 
         return true;
     }
@@ -141,7 +184,7 @@ public class Sistema{
 
         //altera preço
         funcionario.alterarPreco(produto, novoPreco);
-        catalogo.salvar();
+        notificar(EventoSistema.PRECO_ALTERADO, produto);
 
         return true;
     }
@@ -154,7 +197,7 @@ public class Sistema{
         }
 
         produto.adicionarEstoque(quantidade);
-        catalogo.salvar();
+        notificar(EventoSistema.ESTOQUE_REPOSTO, produto);
         return true;
     }
 
@@ -275,12 +318,23 @@ public class Sistema{
         for (ItemPedido item : pedido.getItens()) {
             item.getProduto().retirarEstoque(item.getQuantidade());
         }
-        catalogo.salvar();
 
         pedido.finalizar(pagamento.getForma());
         pedidosAbertos.remove(pedido);
         pedidosFinalizados.add(pedido);
         pedido.getCliente().adicionarPedido(pedido);
+
+        //avisa só depois de tudo atualizado
+        notificar(EventoSistema.PEDIDO_FINALIZADO, pedido);
+        LinkedHashSet<Produto> afetados = new LinkedHashSet<>();
+        for (ItemPedido item : pedido.getItens()) {
+            afetados.add(item.getProduto());
+        }
+        for (Produto produto : afetados) {
+            if (produto.getQuantidade() <= LIMITE_ESTOQUE_BAIXO) {
+                notificar(EventoSistema.ESTOQUE_BAIXO, produto);
+            }
+        }
         return true;
     }
 
