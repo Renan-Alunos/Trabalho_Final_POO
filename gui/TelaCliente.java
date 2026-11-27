@@ -13,7 +13,6 @@ public class TelaCliente extends JPanel {
     private final Sistema sistema;
     private final Cliente clienteAtual;
     private final Runnable onSair;
-    private Pedido pedidoAtual;
     // O carrinho guarda o codigo do produto e a quantidade escolhida.
     private final Map<Integer, Integer> carrinho = new LinkedHashMap<>();
     private JPanel painelProdutos;
@@ -157,6 +156,8 @@ public class TelaCliente extends JPanel {
     }
 
     // O + adiciona uma unidade e o - retira uma.
+    // So mexo no carrinho aqui. O pedido so e criado ao finalizar,
+    // assim os numeros dos pedidos nao ficam pulando a cada clique.
     private void alterarQuantidade(Produto produto, int diferenca) {
         int atual = carrinho.getOrDefault(produto.getCodigo(), 0);
         int novo = atual + diferenca;
@@ -168,45 +169,41 @@ public class TelaCliente extends JPanel {
         }
         if (novo == 0) carrinho.remove(produto.getCodigo());
         else carrinho.put(produto.getCodigo(), novo);
-
-        // Como Pedido nao tem um metodo pra tirar itens,
-        // refaco o pedido quando muda alguma quantidade.        // O Pedido nao possui metodo para remover itens. Por isso a tela
-        // cancela o pedido aberto e cria outro com as quantidades atualizadas.
-        try {
-            pedidoAtual = sistema.atualizarPedidoDoCarrinho(
-                clienteAtual, pedidoAtual, carrinho);
-
-        } catch (IllegalArgumentException | IllegalStateException erro) {
-            JOptionPane.showMessageDialog(this, erro.getMessage());
-
-            if (pedidoAtual != null) {
-                sistema.cancelarPedido(pedidoAtual);
-                pedidoAtual = null;
-            }
-
-            carrinho.clear();
-        }
         atualizarTelaCliente();
     }
 
-    // Confiro se tem itens e finalizo usando o metodo do Sistema.
+    // Crio o pedido a partir do carrinho e finalizo usando o metodo do Sistema.
     private void finalizarPedido() {
-        if (pedidoAtual == null || carrinho.isEmpty()) {
+        if (carrinho.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Adicione produtos ao carrinho primeiro.");
             return;
         }
         // PIX e cartao sao opcoes de pagamento simulado.
         String forma = pagamento.getSelectedItem().equals("PIX") ? "PIX" : "CARTAO";
-        double total = pedidoAtual.calcularTotal();
-        int numero = pedidoAtual.getNumero();
-        boolean ok = sistema.finalizarPedido(pedidoAtual, forma);
-        if (ok) {
+        Pedido pedido;
+        try {
+            pedido = sistema.atualizarPedidoDoCarrinho(clienteAtual, null, carrinho);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage());
+            // O estoque pode ter mudado: tiro do carrinho o que nao esta mais disponivel.
+            carrinho.entrySet().removeIf(item -> {
+                for (Produto p : sistema.listarProdutos()) {
+                    if (p.getCodigo() == item.getKey()) return item.getValue() > p.getQuantidade();
+                }
+                return true;
+            });
+            atualizarTelaCliente();
+            return;
+        }
+        double total = pedido.calcularTotal();
+        int numero = pedido.getNumero();
+        if (sistema.finalizarPedido(pedido, forma)) {
             JOptionPane.showMessageDialog(this, "Pedido " + numero + " finalizado!\nTotal: " + dinheiro(total)
                     + "\nPagamento: " + forma + " (simulado)");
-            pedidoAtual = null;
             carrinho.clear();
             atualizarTelaCliente();
         } else {
+            sistema.cancelarPedido(pedido);
             JOptionPane.showMessageDialog(this, "Nao foi possivel finalizar o pedido.");
         }
     }
@@ -235,8 +232,6 @@ public class TelaCliente extends JPanel {
 
     // Ao sair, limpo o carrinho e volto para a tela de login.
     private void sairDaConta() {
-        if (pedidoAtual != null) sistema.cancelarPedido(pedidoAtual);
-        pedidoAtual = null;
         carrinho.clear();
         onSair.run();
     }

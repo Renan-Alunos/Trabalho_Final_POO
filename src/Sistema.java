@@ -1,4 +1,7 @@
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 /*
@@ -15,17 +18,67 @@ public class Sistema{
     private ArrayList<Pedido> pedidosFinalizados = new ArrayList<>();
     private int proximoNumeroPedido = 1;
 
+    //Observer: quem quiser ser avisado das mudanças se registra aqui
+    public static final int LIMITE_ESTOQUE_BAIXO = 3;
+    private final ArrayList<ObservadorSistema> observadores = new ArrayList<>();
+    private final AlertasEstoque alertasEstoque = new AlertasEstoque(LIMITE_ESTOQUE_BAIXO);
+
     public Sistema(){
         //funcionário administrador
         Funcionario administrador = new Funcionario("Administrador","00000000000","admin123","F01");
         usuarios.add(administrador);
 
-        //produtos iniciais
-        catalogo.adicionarProduto(new Produto(1, "Dipirona 500mg", 12.50, 5));//(codigo, nome, preço, quantidade)
-        catalogo.adicionarProduto(new Produto(2, "Paracetamol 750mg", 9.90, 10));
-        catalogo.adicionarProduto(new Produto(3, "Ibuprofeno 400mg", 15.90, 6));
-        catalogo.adicionarProduto(new Produto(4, "Vitamina C", 19.90, 5));
-        catalogo.adicionarProduto(new Produto(5, "Soro Fisiológico", 7.50, 10));
+        //carrega o catálogo salvo; se não existir (ou estiver danificado), usa os produtos iniciais
+        if (!catalogo.carregar()) {
+            catalogo.adicionarProduto(new Produto(1, "Dipirona 500mg", 12.50, 5));//(codigo, nome, preço, quantidade)
+            catalogo.adicionarProduto(new Produto(2, "Paracetamol 750mg", 9.90, 10));
+            catalogo.adicionarProduto(new Produto(3, "Ibuprofeno 400mg", 15.90, 6));
+            catalogo.adicionarProduto(new Produto(4, "Vitamina C", 19.90, 5));
+            catalogo.adicionarProduto(new Produto(5, "Soro Fisiológico", 7.50, 10));
+            catalogo.salvar();
+        }
+
+        //observadores internos: salvar o catálogo e guardar os avisos de estoque baixo
+        adicionarObservador(new PersistenciaCatalogo(catalogo));
+        adicionarObservador(alertasEstoque);
+
+        //produtos que já estão com estoque baixo ao iniciar também geram aviso
+        for (Produto produto : catalogo.getProdutos()) {
+            if (produto.getQuantidade() <= LIMITE_ESTOQUE_BAIXO) {
+                notificar(EventoSistema.ESTOQUE_BAIXO, produto);
+            }
+        }
+    }
+
+    public void adicionarObservador(ObservadorSistema observador) {
+        if (observador != null && !observadores.contains(observador)) {
+            observadores.add(observador);
+        }
+    }
+
+    public void removerObservador(ObservadorSistema observador) {
+        observadores.remove(observador);
+    }
+
+    //avisa todos os observadores (percorre uma cópia, pois a lista pode mudar durante o aviso)
+    private void notificar(EventoSistema evento, Object dados) {
+        for (ObservadorSistema observador : new ArrayList<>(observadores)) {
+            try {
+                observador.atualizar(evento, dados);
+            } catch (RuntimeException erro) {
+                System.err.println("Erro em um observador: " + erro);
+            }
+        }
+    }
+
+    //devolve (e limpa) os avisos de estoque baixo ainda não vistos pelo funcionário
+    public ArrayList<String> retirarAlertasEstoque() {
+        return alertasEstoque.retirarPendentes();
+    }
+
+    //arredonda para centavos (evita preco com 3+ casas, ex.: 9,999)
+    private double arredondar(double valor) {
+        return BigDecimal.valueOf(valor).setScale(2, RoundingMode.HALF_UP).doubleValue();
     }
     
     //login usuário
@@ -82,8 +135,12 @@ public class Sistema{
             return false;
         }
 
-        //verifica se os dados são válidos
-        if (codigo <= 0 || nome == null || nome.isBlank() || !Double.isFinite(preco) || preco <= 0 || quantidade < 0){
+        //verifica se os dados são válidos (o preço é arredondado para centavos antes de validar)
+        if (!Double.isFinite(preco)){
+            return false;
+        }
+        preco = arredondar(preco);
+        if (codigo <= 0 || nome == null || nome.isBlank() || preco <= 0 || quantidade < 0){
             return false;
         }
 
@@ -97,6 +154,7 @@ public class Sistema{
 
         //só o funcionário adiciona o produto ao catálogo
         funcionario.adicionarProduto(catalogo, produto);
+        notificar(EventoSistema.PRODUTO_CADASTRADO, produto);
 
         return true;
     }
@@ -107,8 +165,12 @@ public class Sistema{
             return false;
         }
 
-        //verifica se o preço é válido
-        if (!Double.isFinite(novoPreco) || novoPreco < 0) {
+        //verifica se o preço é válido (mesma regra do cadastro: maior que zero)
+        if (!Double.isFinite(novoPreco)) {
+            return false;
+        }
+        novoPreco = arredondar(novoPreco);
+        if (novoPreco <= 0) {
             return false;
         }
 
@@ -122,6 +184,7 @@ public class Sistema{
 
         //altera preço
         funcionario.alterarPreco(produto, novoPreco);
+        notificar(EventoSistema.PRECO_ALTERADO, produto);
 
         return true;
     }
@@ -134,6 +197,7 @@ public class Sistema{
         }
 
         produto.adicionarEstoque(quantidade);
+        notificar(EventoSistema.ESTOQUE_REPOSTO, produto);
         return true;
     }
 
@@ -259,6 +323,18 @@ public class Sistema{
         pedidosAbertos.remove(pedido);
         pedidosFinalizados.add(pedido);
         pedido.getCliente().adicionarPedido(pedido);
+
+        //avisa só depois de tudo atualizado
+        notificar(EventoSistema.PEDIDO_FINALIZADO, pedido);
+        LinkedHashSet<Produto> afetados = new LinkedHashSet<>();
+        for (ItemPedido item : pedido.getItens()) {
+            afetados.add(item.getProduto());
+        }
+        for (Produto produto : afetados) {
+            if (produto.getQuantidade() <= LIMITE_ESTOQUE_BAIXO) {
+                notificar(EventoSistema.ESTOQUE_BAIXO, produto);
+            }
+        }
         return true;
     }
 
