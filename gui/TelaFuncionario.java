@@ -1,5 +1,6 @@
 import javax.swing.BorderFactory;
 import javax.swing.JButton;//Cria botão;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -8,27 +9,33 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;//Campo de texto;
+import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
-import java.awt.BorderLayout;//Divide o painel em norte, centro e sul;
+import java.awt.BorderLayout;//Margens do painel;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Locale;
 
-// Menu do funcionário. Igual à TelaCliente, é um painel que o TelaFarmacia coloca na janela.
-// Esta tela não tem regra de negócio: ela só chama os métodos do Sistema.
-public class TelaFuncionario extends JPanel {
+public class TelaFuncionario extends JFrame {
 
     private final Sistema sistema;
     private final Funcionario funcionario;
-    private final Runnable onSair;//o que fazer ao sair da conta (voltar ao login)
+    private final TelaFarmacia telaLogin;
 
     private final JTabbedPane abas = new JTabbedPane();
 
+    //Observer: o Sistema avisa a tela quando algo muda (produto, preco, estoque, venda);
+    private final ObservadorSistema observador = (evento, dados) -> reagir(evento);
+
     //Primeira Aba - Mostra produtos e o estoque;
     private final DefaultTableModel modeloProdutos = new DefaultTableModel(
-            new String[]{"Código", "Produto", "Preço", "Estoque"}, 0) {
+            new String[]{"Codigo", "Produto", "Preco", "Estoque"}, 0) {
         @Override
         public boolean isCellEditable(int linha, int coluna) {
             return false;
@@ -45,19 +52,42 @@ public class TelaFuncionario extends JPanel {
     private final JTextField campoPrecoCodigo = new JTextField();
     private final JTextField campoPrecoNovo = new JTextField();
 
-    //Quarta Aba - Repõe o estoque dos produtos;
+    //Quarta Aba - Repoe o estoque dos produtos;
     private final JTextField campoEstoqueCodigo = new JTextField();
     private final JTextField campoEstoqueQtd = new JTextField();
 
-    //Quinta e Sexta Aba - Mostram os pedidos e as vendas;
+    //Quinta Aba e a Setxa, mostram os pedidos e as vendas;
     private final JTextArea areaPedidos = new JTextArea();
     private final JTextArea areaRelatorio = new JTextArea();
 
-    public TelaFuncionario(Sistema sistema, Funcionario funcionario, Runnable onSair) {
-        super(new BorderLayout());
+    public TelaFuncionario(Sistema sistema, Funcionario funcionario, TelaFarmacia telaLogin) {
         this.sistema = sistema;
         this.funcionario = funcionario;
-        this.onSair = onSair;
+        this.telaLogin = telaLogin;
+
+        setTitle("Farma Aura - Menu do Funcionario");
+        setSize(700, 550);
+        //Fechar no X faz o mesmo que "Sair da conta": volta para o login;
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+                mostrarAlertasEstoque();
+            }
+
+            @Override
+            public void windowClosing(WindowEvent e) {
+                telaLogin.voltarAoLogin();
+            }
+
+            @Override
+            public void windowClosed(WindowEvent e) {
+                //Deixa de ser avisada (vale tanto para o X quanto para "Sair da conta");
+                sistema.removerObservador(observador);
+            }
+        });
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
 
         add(criarTopo(), BorderLayout.NORTH);
         add(abas, BorderLayout.CENTER);
@@ -66,23 +96,24 @@ public class TelaFuncionario extends JPanel {
 
         abas.addTab("Produtos e estoque", criarAbaProdutos());
         abas.addTab("Cadastrar produto", criarFormulario("Cadastrar produto",
-                new String[]{"Código:", "Nome do produto:", "Preço:", "Estoque inicial:"},
+                new String[]{"Codigo:", "Nome do produto:", "Preco:", "Estoque inicial:"},
                 new JTextField[]{campoCadCodigo, campoCadNome, campoCadPreco, campoCadEstoque},
                 "Cadastrar", this::cadastrarProduto));
-        abas.addTab("Alterar preço", criarFormulario("Alterar preço",
-                new String[]{"Código do produto:", "Novo preço:"},
+        abas.addTab("Alterar preco", criarFormulario("Alterar preco",
+                new String[]{"Codigo do produto:", "Novo preco:"},
                 new JTextField[]{campoPrecoCodigo, campoPrecoNovo},
                 "Alterar", this::alterarPreco));
         abas.addTab("Repor estoque", criarFormulario("Repor estoque",
-                new String[]{"Código do produto:", "Quantidade a adicionar:"},
+                new String[]{"Codigo do produto:", "Quantidade a adicionar:"},
                 new JTextField[]{campoEstoqueCodigo, campoEstoqueQtd},
                 "Repor", this::reporEstoque));
         abas.addTab("Pedidos", criarAbaTexto(areaPedidos));
-        abas.addTab("Relatório de vendas", criarAbaTexto(areaRelatorio));
+        abas.addTab("Relatorio de vendas", criarAbaTexto(areaRelatorio));
 
         abas.addChangeListener(e -> atualizarTudo());
         atualizarTudo();
         //Faz uma atualização a cada mudança de Aba;
+        sistema.adicionarObservador(observador);
     }
 
     //TELA;
@@ -95,7 +126,7 @@ public class TelaFuncionario extends JPanel {
         titulo.setForeground(Color.BLUE);
 
         JLabel boasVindas = new JLabel("Bem-vindo, " + funcionario.getNome()
-                + " (" + funcionario.getTipoUsuario() + " - matrícula "
+                + " (" + funcionario.getTipoUsuario() + " - matricula "
                 + funcionario.getMatricula() + ")", JLabel.RIGHT);
 
         topo.add(titulo, BorderLayout.WEST);
@@ -154,9 +185,6 @@ public class TelaFuncionario extends JPanel {
         botao.addActionListener(e -> acao.run());
         form.add(botao);
 
-        //Apertar Enter no último campo faz o mesmo que clicar no botão;
-        campos[campos.length - 1].addActionListener(e -> acao.run());
-
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.add(form, BorderLayout.NORTH);
         return wrapper;
@@ -170,58 +198,119 @@ public class TelaFuncionario extends JPanel {
     }
 
     //Funções do Sistema;
+    //Valida na tela antes de chamar o Sistema, para dar mensagens especificas;
     private void cadastrarProduto() {
         try {
-            int codigo = lerInteiro(campoCadCodigo);
+            int codigo = lerInteiro(campoCadCodigo, "Codigo");
             String nome = campoCadNome.getText().trim();
-            double preco = lerDecimal(campoCadPreco);
-            int quantidade = lerInteiro(campoCadEstoque);
+            double preco = lerDecimal(campoCadPreco, "Preco");
+            int quantidade = lerInteiro(campoCadEstoque, "Estoque inicial");
 
-            mostrarResultado(sistema.cadastrarProduto(funcionario, codigo, nome, preco, quantidade),
-                    "Produto cadastrado.",
-                    "Não foi possível cadastrar o produto.\n"
-                            + "Verifique se o código já existe ou se os dados são válidos.",
-                    campoCadCodigo, campoCadNome, campoCadPreco, campoCadEstoque);
-        } catch (NumberFormatException e) {
-            mensagem("Preencha código, preço e estoque com números válidos.");
+            if (codigo <= 0) {
+                mensagem("O codigo deve ser maior que zero.");
+            } else if (nome.isEmpty()) {
+                mensagem("Informe o nome do produto.");
+            } else if (preco <= 0) {
+                mensagem("O preco deve ser maior que zero.");
+            } else if (quantidade < 0) {
+                mensagem("O estoque inicial nao pode ser negativo.");
+            } else if (buscarProduto(codigo) != null) {
+                mensagem("Ja existe um produto com o codigo " + codigo + ".");
+            } else if (sistema.cadastrarProduto(funcionario, codigo, nome, preco, quantidade)) {
+                mensagem("Produto cadastrado.");
+                campoCadCodigo.setText("");
+                campoCadNome.setText("");
+                campoCadPreco.setText("");
+                campoCadEstoque.setText("");
+            } else {
+                mensagem("Nao foi possivel cadastrar o produto.");
+            }
+        } catch (IllegalArgumentException e) {
+            mensagem(e.getMessage());
         }
     }
 
     private void alterarPreco() {
         try {
-            int codigo = lerInteiro(campoPrecoCodigo);
-            double novoPreco = lerDecimal(campoPrecoNovo);
+            int codigo = lerInteiro(campoPrecoCodigo, "Codigo do produto");
+            double novoPreco = lerDecimal(campoPrecoNovo, "Novo preco");
 
-            mostrarResultado(sistema.alterarPreco(funcionario, codigo, novoPreco),
-                    "Preço alterado.",
-                    "Não foi possível alterar o preço.\n"
-                            + "Verifique o código do produto e o valor informado.",
-                    campoPrecoCodigo, campoPrecoNovo);
-        } catch (NumberFormatException e) {
-            mensagem("Preencha código e preço com números válidos.");
+            if (buscarProduto(codigo) == null) {
+                mensagem("Nao existe produto com o codigo " + codigo + ".");
+            } else if (novoPreco <= 0) {
+                mensagem("O preco deve ser maior que zero.");
+            } else if (sistema.alterarPreco(funcionario, codigo, novoPreco)) {
+                mensagem("Preco alterado.");
+                campoPrecoCodigo.setText("");
+                campoPrecoNovo.setText("");
+            } else {
+                mensagem("Nao foi possivel alterar o preco.");
+            }
+        } catch (IllegalArgumentException e) {
+            mensagem(e.getMessage());
         }
     }
 
     private void reporEstoque() {
         try {
-            int codigo = lerInteiro(campoEstoqueCodigo);
-            int quantidade = lerInteiro(campoEstoqueQtd);
+            int codigo = lerInteiro(campoEstoqueCodigo, "Codigo do produto");
+            int quantidade = lerInteiro(campoEstoqueQtd, "Quantidade a adicionar");
+            Produto produto = buscarProduto(codigo);
 
-            mostrarResultado(sistema.reporEstoque(funcionario, codigo, quantidade),
-                    "Estoque atualizado.",
-                    "Não foi possível repor o estoque.\n"
-                            + "Verifique o código do produto e a quantidade (maior que zero).",
-                    campoEstoqueCodigo, campoEstoqueQtd);
-        } catch (NumberFormatException e) {
-            mensagem("Preencha código e quantidade com números inteiros válidos.");
+            if (produto == null) {
+                mensagem("Nao existe produto com o codigo " + codigo + ".");
+            } else if (quantidade <= 0) {
+                mensagem("A quantidade deve ser maior que zero.");
+            } else if (quantidade > Integer.MAX_VALUE - produto.getQuantidade()) {
+                mensagem("Quantidade grande demais: o estoque ultrapassaria o limite permitido.");
+            } else if (sistema.reporEstoque(funcionario, codigo, quantidade)) {
+                mensagem("Estoque atualizado.");
+                campoEstoqueCodigo.setText("");
+                campoEstoqueQtd.setText("");
+            } else {
+                mensagem("Nao foi possivel repor o estoque.");
+            }
+        } catch (IllegalArgumentException e) {
+            mensagem(e.getMessage());
         }
     }
 
     private void sairDaConta() {
-        onSair.run();
+        dispose();
+        telaLogin.voltarAoLogin();
     }
 
-    //Atualização dos Dados;
+    //Observer;
+    //Chamado pelo Sistema quando algo muda. A tela se atualiza sozinha;
+    private void reagir(EventoSistema evento) {
+        if (evento == EventoSistema.ESTOQUE_BAIXO) {
+            //nao abre janela no meio da operacao do Sistema: deixa para depois;
+            SwingUtilities.invokeLater(() -> {
+                atualizarTudo();
+                mostrarAlertasEstoque();
+            });
+        } else if (SwingUtilities.isEventDispatchThread()) {
+            atualizarTudo();
+        } else {
+            SwingUtilities.invokeLater(this::atualizarTudo);
+        }
+    }
+
+    //Mostra os avisos de estoque baixo que ainda nao foram vistos;
+    private void mostrarAlertasEstoque() {
+        ArrayList<String> avisos = sistema.retirarAlertasEstoque();
+        if (avisos.isEmpty()) {
+            return;
+        }
+        StringBuilder texto = new StringBuilder("Atencao ao estoque (limite: "
+                + Sistema.LIMITE_ESTOQUE_BAIXO + " unidades):\n\n");
+        for (String aviso : avisos) {
+            texto.append("- ").append(aviso).append("\n");
+        }
+        JOptionPane.showMessageDialog(this, texto.toString(), "Alerta de estoque", JOptionPane.WARNING_MESSAGE);
+    }
+
+    //Atulização dos Dados;
     private void atualizarTudo() {
         atualizarProdutos();
         atualizarPedidos();
@@ -249,9 +338,9 @@ public class TelaFuncionario extends JPanel {
             texto.append("Nenhum pedido encontrado.");
         }
         for (Pedido pedido : pedidos) {
-            texto.append("Pedido número ").append(pedido.getNumero())
+            texto.append("Pedido numero ").append(pedido.getNumero())
                  .append(" | Cliente: ").append(pedido.getCliente().getNome())
-                 .append(" | Situação: ").append(pedido.getSituacao())
+                 .append(" | Situacao: ").append(pedido.getSituacao())
                  .append(" | Pagamento: ").append(pedido.getFormaPagamento())
                  .append("\n");
             for (ItemPedido item : pedido.getItens()) {
@@ -269,32 +358,36 @@ public class TelaFuncionario extends JPanel {
         areaPedidos.setCaretPosition(0);
     }
 
-    //Auxiliares - evitam repetir o mesmo código em cada ação;
+    //Procura o produto pelo codigo (null se nao existir);
+    private Produto buscarProduto(int codigo) {
+        for (Produto produto : sistema.listarProdutos()) {
+            if (produto.getCodigo() == codigo) {
+                return produto;
+            }
+        }
+        return null;
+    }
 
-    //Se deu certo: limpa os campos, atualiza as tabelas e avisa. Se não: só avisa;
-    private void mostrarResultado(boolean sucesso, String msgSucesso, String msgFalha,
-                                  JTextField... camposParaLimpar) {
-        if (sucesso) {
-            limpar(camposParaLimpar);
-            atualizarTudo();
-            mensagem(msgSucesso);
-        } else {
-            mensagem(msgFalha);
+    private int lerInteiro(JTextField campo, String nomeCampo) {
+        try {
+            return Integer.parseInt(campo.getText().trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(nomeCampo + " deve ser um numero inteiro valido.");
         }
     }
 
-    private int lerInteiro(JTextField campo) {
-        return Integer.parseInt(campo.getText().trim());
-    }
-
-    //Faz vírgula ou ponto funcionar para os números;
-    private double lerDecimal(JTextField campo) {
-        return Double.parseDouble(campo.getText().trim().replace(',', '.'));
-    }
-
-    private void limpar(JTextField... campos) {
-        for (JTextField campo : campos) {
-            campo.setText("");
+    //Faz vírgula ou ponto funcionar para os números e arredonda para centavos (9,999 -> 10,00);
+    private double lerDecimal(JTextField campo, String nomeCampo) {
+        try {
+            String texto = campo.getText().trim().replace(',', '.');
+            double valor = new BigDecimal(texto).setScale(2, RoundingMode.HALF_UP).doubleValue();
+            if (!Double.isFinite(valor)) {
+                throw new NumberFormatException();
+            }
+            return valor;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(nomeCampo
+                    + " deve ser um numero valido (ex.: 12,50), sem separador de milhar.");
         }
     }
 
